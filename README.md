@@ -1,3 +1,5 @@
+[![Build Status](https://dev.azure.com/home-assistant/Home%20Assistant/_apis/build/status/home-assistant.hassio-builder?branchName=master)](https://dev.azure.com/home-assistant/Home%20Assistant/_build/latest?definitionId=4&branchName=master)
+
 # Build docker env
 
 ## Install
