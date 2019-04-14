@@ -1,0 +1,99 @@
+# https://dev.azure.com/home-assistant
+
+trigger:
+  branches:
+    include:
+    - master
+  tags:
+    include:
+    - '*'
+    exclude:
+    - untagged*
+pr:
+- master
+
+jobs:
+
+- job: 'Hadolint'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - script: sudo docker pull hadolint/hadolint:v1.16.3
+    displayName: 'Install Hadolint'
+  - script: |
+      sudo docker run --rm -i \
+        -v $(pwd)/.hadolint.yaml:/.hadolint.yaml:ro \
+        hadolint/hadolint:v1.16.3 < Dockerfile
+    displayName: 'Run Hadolint'
+
+
+- job: 'ShellCheck'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - script: sudo docker pull koalaman/shellcheck:v0.6.0
+    displayName: 'Install ShellCheck'
+  - script: |
+      sudo docker run --rm -i \
+        -v $(pwd):/mnt:ro koalaman/shellcheck:v0.6.0 *.sh
+    displayName: 'Run ShellCheck'
+
+
+- job: 'ReleaseDEV'
+  condition: and(eq(variables['Build.SourceBranchName'], 'master'), succeeded('Hadolint'), succeeded('ShellCheck'))
+  dependsOn:
+  - 'Hadolint'
+  - 'ShellCheck'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  strategy:
+    maxParallel: 1
+    matrix:
+      amd64:
+        buildArch: 'amd64'
+      armv7:
+        buildArch: 'armv7'
+      aarch64:
+        buildArch: 'aarch64'
+  steps:
+  - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
+    displayName: 'Docker hub login'
+  - script: sudo docker pull homeassistant/amd64-builder
+    displayName: 'Install Builder'
+  - script: |
+      sudo docker run --rm --privileged \
+        -v ~/.docker:/root/.docker \
+        -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
+        homeassistant/amd64-builder --builder dev "--$(buildArch)" \
+        -t /data --docker-hub homeassistant
+    displayName: 'Build DEV'
+
+
+- job: 'Release'
+  condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags'), succeeded('Hadolint'), succeeded('ShellCheck'))
+  dependsOn:
+  - 'Hadolint'
+  - 'ShellCheck'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  strategy:
+    maxParallel: 3
+    matrix:
+      amd64:
+        buildArch: 'amd64'
+      armv7:
+        buildArch: 'armv7'
+      aarch64:
+        buildArch: 'aarch64'
+  steps:
+  - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
+    displayName: 'Docker hub login'
+  - script: sudo docker pull homeassistant/amd64-builder
+    displayName: 'Install Builder'
+  - script: |
+      sudo docker run --rm --privileged \
+        -v ~/.docker:/root/.docker \
+        -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
+        homeassistant/amd64-builder --builder $(Build.SourceBranchName) \
+        "--$(buildArch)" -t /data --docker-hub homeassistant
+    displayName: 'Build Release'
