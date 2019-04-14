@@ -104,7 +104,7 @@ Options:
   Internals:
     --addon
         Default on. Run all things for an addon build.
-    --builder
+    --builder <VERSION>
         Build a it self.
     --base <VERSION>
         Build our base images.
@@ -297,7 +297,7 @@ function build_builder() {
     docker_cli+=("--label" "io.hass.type=builder")
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$version" \
+    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@]
 }
 
@@ -721,6 +721,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --builder)
             BUILD_TYPE="builder"
+            VERSION=$2
             ;;
         --supervisor)
             BUILD_TYPE="supervisor"
