@@ -5,7 +5,7 @@ FROM $BUILD_FROM
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Setup locals
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         jq \
         git \
         python3-setuptools \
@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Setup arm binary support
 ARG BUILD_ARCH
 RUN if [ "$BUILD_ARCH" != "amd64" ]; then exit 0; else \
-    apt-get update && apt-get install -y \
+    apt-get update && apt-get install -y --no-install-recommends \
         qemu-user-static \
         binfmt-support \
     && rm -rf /var/lib/apt/lists/*; fi
