@@ -25,6 +25,7 @@ RELEASE=
 BUILD_LIST=()
 BUILD_TYPE="addon"
 BUILD_TASKS=()
+BUILD_ERROR=()
 declare -A BUILD_MACHINE=(
                           [intel-nuc]="amd64" \
                           [odroid-c2]="aarch64" \
@@ -186,8 +187,7 @@ function stop_docker() {
                 sleep 1
                 endtime=$(date +%s)
             else
-                bashio::log.error "Timeout while waiting for container docker to die"
-                exit 1
+                bashio::exit.nok "Timeout while waiting for container docker to die"
             fi
         done
     else
@@ -248,6 +248,13 @@ function run_build() {
         --build-arg "BUILD_VERSION=$version" \
         "${docker_cli[@]}" \
         "$build_dir"
+
+    # Success?
+    # shellcheck disable=SC2181
+    if [ $? -ne 0 ]; then
+        BUILD_ERROR+=("$repository/$image:$version")
+        return 0
+    fi
 
     push_images+=("$repository/$image:$version")
     bashio::log.info "Finish build for $repository/$image:$version"
@@ -836,4 +843,9 @@ wait "${BUILD_TASKS[@]}"
 clean_crosscompile
 stop_docker
 
-bashio::exit.ok
+# No Errors
+if [ ${#BUILD_ERROR[@]} -eq 0 ]; then
+    bashio::exit.ok
+fi
+
+bashio::exit.nok "Some build fails: ${BUILD_ERROR[*]}"
