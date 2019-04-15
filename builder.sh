@@ -729,6 +729,7 @@ while [[ $# -gt 0 ]]; do
         --builder)
             BUILD_TYPE="builder"
             VERSION=$2
+            shift
             ;;
         --supervisor)
             BUILD_TYPE="supervisor"
