@@ -847,4 +847,4 @@ if [ ${#BUILD_ERROR[@]} -eq 0 ]; then
     bashio::exit.ok
 fi
 
-bashio::exit.nok "Some build fails: ${BUILD_ERROR[@]}"
+bashio::exit.nok "Some build fails:" "${BUILD_ERROR[@]}"
