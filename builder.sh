@@ -250,6 +250,7 @@ function run_build() {
         "$build_dir"
 
     # Success?
+    # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         BUILD_ERROR+=("$repository/$image:$version")
         return 0
@@ -847,4 +848,4 @@ if [ ${#BUILD_ERROR[@]} -eq 0 ]; then
     bashio::exit.ok
 fi
 
-bashio::exit.nok "Some build fails:" "${BUILD_ERROR[@]}"
+bashio::exit.nok "Some build fails: ${BUILD_ERROR[*]}"
