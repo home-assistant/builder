@@ -12,18 +12,23 @@ trigger:
 pr:
 - master
 
+variables:
+  versionHadolint: 'v1.16.3'
+  versionShellCheck: 'v0.6.0'
+  versionBuilder: '1.1'
+
 jobs:
 
 - job: 'Hadolint'
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
-  - script: sudo docker pull hadolint/hadolint:v1.16.3
+  - script: sudo docker pull hadolint/hadolint:$(versionHadolint)
     displayName: 'Install Hadolint'
   - script: |
       sudo docker run --rm -i \
         -v $(pwd)/.hadolint.yaml:/.hadolint.yaml:ro \
-        hadolint/hadolint:v1.16.3 < Dockerfile
+        hadolint/hadolint:$(versionHadolint) < Dockerfile
     displayName: 'Run Hadolint'
 
 
@@ -31,11 +36,11 @@ jobs:
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
-  - script: sudo docker pull koalaman/shellcheck:v0.6.0
+  - script: sudo docker pull koalaman/shellcheck:$(versionShellCheck)
     displayName: 'Install ShellCheck'
   - script: |
       sudo docker run --rm -i \
-        -v $(pwd):/mnt:ro koalaman/shellcheck:v0.6.0 *.sh
+        -v $(pwd):/mnt:ro koalaman/shellcheck:$(versionShellCheck) *.sh
     displayName: 'Run ShellCheck'
 
 
@@ -58,14 +63,14 @@ jobs:
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
-  - script: sudo docker pull homeassistant/amd64-builder
+  - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
     displayName: 'Install Builder'
   - script: |
       sudo docker run --rm --privileged \
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
-        homeassistant/amd64-builder --builder dev "--$(buildArch)" \
-        -t /data --docker-hub homeassistant
+        homeassistant/amd64-builder:$(versionBuilder) --builder dev \
+        "--$(buildArch)" -t /data --docker-hub homeassistant
     displayName: 'Build DEV'
 
 
@@ -88,12 +93,13 @@ jobs:
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
-  - script: sudo docker pull homeassistant/amd64-builder
+  - script: sudo docker pull homeassistant/amd64-builder:$(versionBuilder)
     displayName: 'Install Builder'
   - script: |
       sudo docker run --rm --privileged \
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
-        homeassistant/amd64-builder --builder $(Build.SourceBranchName) \
+        homeassistant/amd64-builder:$(versionBuilder) \
+        --builder $(Build.SourceBranchName) \
         "--$(buildArch)" -t /data --docker-hub homeassistant
     displayName: 'Build Release'
