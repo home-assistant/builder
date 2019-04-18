@@ -504,6 +504,11 @@ function build_homeassistant_base() {
     # Make version
     version="$(date +%Y%m%d)"
 
+    # Set labels
+    docker_cli+=("--label" "io.hass.type=base")
+    docker_cli+=("--label" "io.hass.base.version=$version")
+    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
+
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$version" \
         "$build_from" "$build_arch" docker_cli[@]
