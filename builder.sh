@@ -798,35 +798,37 @@ if [ -n "$GIT_REPOSITORY" ]; then
 fi
 
 # Select arch build
-bashio::log.info "Run $BUILD_TYPE build for: ${BUILD_LIST[*]}"
-for arch in "${BUILD_LIST[@]}"; do
-    if [ "$BUILD_TYPE" == "addon" ]; then
-        (build_addon "$arch") &
-    elif [ "$BUILD_TYPE" == "builder" ]; then
-        (build_builder "$arch") &
-    elif [ "$BUILD_TYPE" == "base" ]; then
-    	(build_base_image "$arch") &
-    elif [ "$BUILD_TYPE" == "base-python" ]; then
-    	(build_base_python_image "$arch") &
-    elif [ "$BUILD_TYPE" == "base-ubuntu" ]; then
-    	(build_base_ubuntu_image "$arch") &
-    elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
-    	(build_base_raspbian_image "$arch") &
-    elif [ "$BUILD_TYPE" == "cli" ]; then
-        (build_hassio_cli "$arch") &
-    elif [ "$BUILD_TYPE" == "supervisor" ]; then
-        (build_supervisor "$arch") &
-    elif [ "$BUILD_TYPE" == "homeassistant-base" ]; then
-        (build_homeassistant_base "$arch") &
-    elif [ "$BUILD_TYPE" == "homeassistant" ]; then
-        (build_homeassistant "$arch") &
-    elif [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
-        continue  # Handled in the loop below
-    else
-        bashio::exit.nok "Invalid build type: $BUILD_TYPE"
-    fi
-    BUILD_TASKS+=($!)
-done
+if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
+    bashio::log.info "Run $BUILD_TYPE build for: ${BUILD_LIST[*]}"
+    for arch in "${BUILD_LIST[@]}"; do
+        if [ "$BUILD_TYPE" == "addon" ]; then
+            (build_addon "$arch") &
+        elif [ "$BUILD_TYPE" == "builder" ]; then
+            (build_builder "$arch") &
+        elif [ "$BUILD_TYPE" == "base" ]; then
+            (build_base_image "$arch") &
+        elif [ "$BUILD_TYPE" == "base-python" ]; then
+            (build_base_python_image "$arch") &
+        elif [ "$BUILD_TYPE" == "base-ubuntu" ]; then
+            (build_base_ubuntu_image "$arch") &
+        elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
+            (build_base_raspbian_image "$arch") &
+        elif [ "$BUILD_TYPE" == "cli" ]; then
+            (build_hassio_cli "$arch") &
+        elif [ "$BUILD_TYPE" == "supervisor" ]; then
+            (build_supervisor "$arch") &
+        elif [ "$BUILD_TYPE" == "homeassistant-base" ]; then
+            (build_homeassistant_base "$arch") &
+        elif [ "$BUILD_TYPE" == "homeassistant" ]; then
+            (build_homeassistant "$arch") &
+        elif [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
+            continue  # Handled in the loop below
+        else
+            bashio::exit.nok "Invalid build type: $BUILD_TYPE"
+        fi
+        BUILD_TASKS+=($!)
+    done
+fi
 
 # Select machine build
 if [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
