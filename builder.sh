@@ -9,6 +9,7 @@ set -e
 DOCKER_TIMEOUT=20
 DOCKER_PID=-1
 DOCKER_HUB=
+DOCKER_HUB_CHECK=false
 DOCKER_CACHE=true
 DOCKER_LATEST=true
 DOCKER_PUSH=true
@@ -94,6 +95,8 @@ Options:
        Use same tag as cache tag instead latest.
     -d, --docker-hub <DOCKER_REPOSITORY>
        Set or overwrite the docker repository.
+    --docker-hub-check
+       Check if the version already exists before starting the build.
     --docker-login
        Login into docker hub on startup (need '-ti' docker opts)
     --no-crossbuild-cleanup
@@ -207,6 +210,7 @@ function run_build() {
 
     local push_images=()
     local cache_tag="latest"
+    local metadata
 
     # Overwrites
     if [ -n "$DOCKER_HUB" ]; then repository="$DOCKER_HUB"; fi
@@ -216,6 +220,18 @@ function run_build() {
     # Replace {arch} with build arch for image
     # shellcheck disable=SC1117
     image="$(echo "$image" | sed -r "s/\{arch\}/$build_arch/g")"
+
+    # Check if image exists on docker hub
+    if [ "$DOCKER_HUB_CHECK" == "true" ]; then
+        metadata="$(curl -s "https://hub.docker.com/v2/repositories/$repository/$image/tags/$version/")"
+
+        if [ ! -z "$metadata" ] && [ "$(echo "$metadata" | jq --raw-output '.name')" == "$version" ]; then
+            bashio::log.info "Skip build, found $image:$version on dockerhub"
+            return 0
+        else
+            bashio::log.info "Start build, $image:$version is not on dockerhub"
+        fi
+    fi
 
     # Init Cache
     if [ "$DOCKER_CACHE" == "true" ]; then
@@ -674,6 +690,9 @@ while [[ $# -gt 0 ]]; do
         -d|--docker-hub)
             DOCKER_HUB=$2
             shift
+            ;;
+        --docker-hub-check)
+            DOCKER_HUB_CHECK=true
             ;;
         --docker-login)
             DOCKER_LOGIN=true
