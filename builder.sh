@@ -225,7 +225,7 @@ function run_build() {
     if [ "$DOCKER_HUB_CHECK" == "true" ]; then
         metadata="$(curl -s "https://hub.docker.com/v2/repositories/$repository/$image/tags/$version/")"
 
-        if [ ! -z "$metadata" ] && [ "$(echo "$metadata" | jq --raw-output '.name')" == "$version" ]; then
+        if [ -n "$metadata" ] && [ "$(echo "$metadata" | jq --raw-output '.name')" == "$version" ]; then
             bashio::log.info "Skip build, found $image:$version on dockerhub"
             return 0
         else
