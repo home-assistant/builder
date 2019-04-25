@@ -769,7 +769,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --homeassistant-landingpage)
             BUILD_TYPE="homeassistant-landingpage"
-            DOCKER_CACHE=false
+            SELF_CACHE=true
             DOCKER_LATEST=false
             VERSION="landingpage"
             extract_machine_build "$2"
