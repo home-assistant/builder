@@ -784,7 +784,7 @@ while [[ $# -gt 0 ]]; do
             ;;
 
         *)
-            bashio::log.warning "$0 : Argument '$1' unknown will be Ignoring"
+            bashio::exit.nok "$0 : Argument '$1' unknown"
             ;;
     esac
     shift
