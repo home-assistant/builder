@@ -110,6 +110,8 @@ Options:
         Default on. Run all things for an addon build.
     --builder <VERSION>
         Build a it self.
+    --builder-wheels <VERSION>
+        Build the wheels builder for Home Assistant.
     --base <VERSION>
         Build our base images.
     --base-python <VERSION>
@@ -122,7 +124,7 @@ Options:
         Build a Hass.io supervisor image.
     --hassio-cli <VERSION>
         Build a Hass.io OS CLI image.
-    --homeassistant-base
+    --homeassistant-base <VERSION>
         Build a Home-Assistant base image.
     --homeassistant <VERSION>
         Build the generic release for a Home-Assistant.
@@ -583,6 +585,22 @@ function build_homeassistant_landingpage() {
 }
 
 
+function build_wheels() {
+    local build_arch=$1
+
+    local image="{arch}-wheels"
+    local build_from="homeassistant/${build_arch}-base-python:3.7"
+    local docker_cli=()
+
+    # Metadata
+    docker_cli+=("--label" "io.hass.type=wheels")
+
+    # Start build
+    run_build "$TARGET" "$DOCKER_HUB" "$image" "" \
+        "$build_from" "$build_arch" docker_cli[@]
+}
+
+
 function extract_machine_build() {
     local list=$1
     local array=()
@@ -782,6 +800,11 @@ while [[ $# -gt 0 ]]; do
             extract_machine_build "$(echo "$2" | cut -d '=' -f 2)"
             shift
             ;;
+        --builder-wheels)
+            BUILD_TYPE="builder-wheels"
+            VERSION=$2
+            shift
+            ;;
 
         *)
             bashio::exit.nok "$0 : Argument '$1' unknown"
@@ -840,6 +863,8 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_homeassistant_base "$arch") &
         elif [ "$BUILD_TYPE" == "homeassistant" ]; then
             (build_homeassistant "$arch") &
+        elif [ "$BUILD_TYPE" == "builder-wheels" ]; then
+            (build_wheels "$arch") &
         elif [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
             continue  # Handled in the loop below
         else
