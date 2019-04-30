@@ -110,7 +110,7 @@ Options:
         Default on. Run all things for an addon build.
     --builder <VERSION>
         Build a it self.
-    --builder-wheels <VERSION>
+    --builder-wheels
         Build the wheels builder for Home Assistant.
     --base <VERSION>
         Build our base images.
@@ -591,12 +591,14 @@ function build_wheels() {
     local image="{arch}-wheels"
     local build_from="homeassistant/${build_arch}-base-python:3.7"
     local docker_cli=()
+    local version=""
 
     # Metadata
+    version="$(python3 "$TARGET/setup.py" -V)"
     docker_cli+=("--label" "io.hass.type=wheels")
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "" \
+    run_build "$TARGET" "$DOCKER_HUB" "$image" "$version" \
         "$build_from" "$build_arch" docker_cli[@]
 }
 
@@ -802,8 +804,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --builder-wheels)
             BUILD_TYPE="builder-wheels"
-            VERSION=$2
-            shift
             ;;
 
         *)
