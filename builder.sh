@@ -517,18 +517,14 @@ function build_homeassistant_base() {
     local image="{arch}-homeassistant-base"
     local build_from="homeassistant/${build_arch}-base-python:3.7"
     local docker_cli=()
-    local version=""
-
-    # Make version
-    version="$(date +%Y%m%d)"
 
     # Set labels
     docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$version")
+    docker_cli+=("--label" "io.hass.base.version=$VERSION")
     docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$version" \
+    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@]
 }
 
@@ -780,6 +776,8 @@ while [[ $# -gt 0 ]]; do
             ;;
         --homeassistant-base)
             BUILD_TYPE="homeassistant-base"
+            VERSION=$2
+            shift
             ;;
         --homeassistant)
             BUILD_TYPE="homeassistant"
