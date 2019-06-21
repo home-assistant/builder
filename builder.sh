@@ -214,11 +214,16 @@ function run_build() {
     local build_from=$5
     local build_arch=$6
     local docker_cli=("${!7}")
-    local docker_tags=("${!8}")
 
+    local docker_cli=()
+    local docker_tags=()
     local push_images=()
     local cache_tag="latest"
     local metadata
+
+    if [ "$#" -eq 8 ]; then
+        docker_tags=("${!8}")
+    fi
 
     # Overwrites
     if [ -n "$DOCKER_HUB" ]; then repository="$DOCKER_HUB"; fi
