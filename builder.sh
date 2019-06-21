@@ -533,7 +533,7 @@ function build_homeassistant() {
     local build_arch=$1
 
     local image="{arch}-homeassistant"
-    local build_from="homeassistant/${build_arch}-homeassistant-base:latest"
+    local build_from="homeassistant/${build_arch}-homeassistant-base"
     local docker_cli=()
 
     # Set labels
