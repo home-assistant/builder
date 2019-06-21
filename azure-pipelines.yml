@@ -55,16 +55,7 @@ jobs:
   - 'Hadolint'
   - 'ShellCheck'
   pool:
-    vmImage: 'ubuntu-16.04'
-  strategy:
-    maxParallel: 1
-    matrix:
-      amd64:
-        buildArch: 'amd64'
-      armv7:
-        buildArch: 'armv7'
-      aarch64:
-        buildArch: 'aarch64'
+    vmImage: 'ubuntu-latest'
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
@@ -75,7 +66,7 @@ jobs:
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder:$(versionBuilder) --builder dev \
-        "--$(buildArch)" -t /data --docker-hub homeassistant
+        --amd64 --armv7 --aarch64 -t /data --docker-hub homeassistant
     displayName: 'Build DEV'
 
 
@@ -85,16 +76,7 @@ jobs:
   - 'Hadolint'
   - 'ShellCheck'
   pool:
-    vmImage: 'ubuntu-16.04'
-  strategy:
-    maxParallel: 3
-    matrix:
-      amd64:
-        buildArch: 'amd64'
-      armv7:
-        buildArch: 'armv7'
-      aarch64:
-        buildArch: 'aarch64'
+    vmImage: 'ubuntu-latest'
   steps:
   - script: sudo docker login -u $(dockerUser) -p $(dockerPassword)
     displayName: 'Docker hub login'
@@ -106,5 +88,5 @@ jobs:
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
         homeassistant/amd64-builder:$(versionBuilder) \
         --builder $(Build.SourceBranchName) \
-        "--$(buildArch)" -t /data --docker-hub homeassistant
+        --amd64 --armv7 --aarch64 -t /data --docker-hub homeassistant
     displayName: 'Build Release'
