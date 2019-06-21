@@ -287,6 +287,7 @@ function run_build() {
 
     # Tag images
     for tag_image in "${docker_tags[@]}"; do
+        bashio::log.info "Create image tag: ${tag_image}"
         docker tag "$repository/$image:$version" "$repository/$image:$tag_image"
         push_images+=("$repository/$image:$tag_image")
     done
