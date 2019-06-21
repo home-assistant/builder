@@ -213,8 +213,8 @@ function run_build() {
     local version=$4
     local build_from=$5
     local build_arch=$6
-    local docker_cli=$7
-    local docker_tags=$8
+    local docker_cli=("${!7}")
+    local docker_tags=("${!8}")
 
     local push_images=()
     local cache_tag="latest"
@@ -335,7 +335,7 @@ function build_builder() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 function build_base_image() {
@@ -354,7 +354,7 @@ function build_base_image() {
 
     # Start build
     run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 function build_base_python_image() {
@@ -379,7 +379,7 @@ function build_base_python_image() {
 
     # Start build
     run_build "$TARGET/$VERSION" "$DOCKER_HUB" "$image" "$version" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -405,7 +405,7 @@ function build_base_ubuntu_image() {
 
     # Start build
     run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -431,7 +431,7 @@ function build_base_raspbian_image() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -500,7 +500,7 @@ function build_addon() {
 
     # Start build
     run_build "$TARGET" "$repository" "$image" "$version" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -524,7 +524,7 @@ function build_supervisor() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$version" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -541,7 +541,7 @@ function build_hassio_cli() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -560,7 +560,7 @@ function build_homeassistant_base() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -577,7 +577,7 @@ function build_homeassistant() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -596,7 +596,7 @@ function build_homeassistant_machine() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "" docker_cli[@] docker_tags[@]
 }
 
 
@@ -615,7 +615,7 @@ function build_homeassistant_landingpage() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -645,7 +645,7 @@ function build_wheels() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$version-${PYTHON}" \
-        "$build_from" "$build_arch" "${docker_cli[*]}" "${docker_tags[*]}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
