@@ -23,6 +23,8 @@ TARGET=
 VERSION=
 IMAGE=
 RELEASE=
+PYTHON=
+ALPINE=
 BUILD_LIST=()
 BUILD_TYPE="addon"
 BUILD_TASKS=()
@@ -110,11 +112,11 @@ Options:
         Default on. Run all things for an addon build.
     --builder <VERSION>
         Build a it self.
-    --builder-wheels
+    --builder-wheels <PYTHON_TAG>
         Build the wheels builder for Home Assistant.
     --base <VERSION>
         Build our base images.
-    --base-python <VERSION>
+    --base-python <VERSION=ALPINE>
         Build our base python images.
     --base-raspbian <VERSION>
         Build our base raspbian images.
@@ -124,7 +126,7 @@ Options:
         Build a Hass.io supervisor image.
     --hassio-cli <VERSION>
         Build a Hass.io OS CLI image.
-    --homeassistant-base <VERSION>
+    --homeassistant-base <VERSION=PYTHON_TAG>
         Build a Home-Assistant base image.
     --homeassistant <VERSION>
         Build the generic release for a Home-Assistant.
@@ -209,6 +211,7 @@ function run_build() {
     local build_from=$5
     local build_arch=$6
     local docker_cli=("${!7}")
+    local docker_tags=("${!8}")
 
     local push_images=()
     local cache_tag="latest"
@@ -279,21 +282,26 @@ function run_build() {
 
     # Tag latest
     if [ "$DOCKER_LATEST" == "true" ]; then
-        docker tag "$repository/$image:$version" "$repository/$image:latest"
-        push_images+=("$repository/$image:latest")
+        push_tags+=("latest")
     fi
+
+    # Tag images
+    for tag_image in "${docker_tags[@]}"; do
+        docker tag "$repository/$image:$version" "$repository/$image:$tag_image"
+        push_images+=("$tag_image")
+    done
 
     # Push images
     if [ "$DOCKER_PUSH" == "true" ]; then
         for i in "${push_images[@]}"; do
-            for j in {1..25}; do
+            for j in {1..3}; do
                 bashio::log.info "Start upload $i"
                 if docker push "$i" > /dev/null 2>&1; then
                     bashio::log.info "Upload success after $j"
                     break
                 fi
                 bashio::log.warning "Upload fail on $j"
-                sleep 15
+                sleep 30
             done
         done
     fi
@@ -309,6 +317,7 @@ function build_builder() {
     local build_from=""
     local version=""
     local docker_cli=()
+    local docker_tags=()
 
     # Select builder image
     if [ "$build_arch" == "i386" ] || [ "$build_arch" == "armhf" ]; then
@@ -323,14 +332,16 @@ function build_builder() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 function build_base_image() {
     local build_arch=$1
-    local image="{arch}-base"
+
     local build_from=""
+    local image="{arch}-base"
     local docker_cli=()
+    local docker_tags=()
 
     # Set type
     docker_cli+=("--label" "io.hass.type=base")
@@ -340,14 +351,22 @@ function build_base_image() {
 
     # Start build
     run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 function build_base_python_image() {
     local build_arch=$1
+
     local image="{arch}-base-python"
-    local build_from="homeassistant/${build_arch}-base"
+    local build_from="homeassistant/${build_arch}-base:${ALPINE}"
+    local version="${VERSION}-alpine${ALPINE}"
     local docker_cli=()
+    local docker_tags=()
+
+    # If latest python version/build
+    if [ "$DOCKER_LATEST" == "true" ]; then
+        docker_tags=("$VERSION")
+    fi
 
     # Set type
     docker_cli+=("--label" "io.hass.type=base")
@@ -356,16 +375,18 @@ function build_base_python_image() {
     docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
 
     # Start build
-    run_build "$TARGET/$VERSION" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@]
+    run_build "$TARGET/$VERSION" "$DOCKER_HUB" "$image" "$version" \
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
 function build_base_ubuntu_image() {
     local build_arch=$1
-    local image="{arch}-base-ubuntu"
+
     local build_from=""
+    local image="{arch}-base-ubuntu"
     local docker_cli=()
+    local docker_tags=()
 
     # Select builder image
     if [ "$build_arch" == "armhf" ]; then
@@ -381,15 +402,17 @@ function build_base_ubuntu_image() {
 
     # Start build
     run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
 function build_base_raspbian_image() {
     local build_arch=$1
-    local image="{arch}-base-raspbian"
+
     local build_from="$VERSION"
+    local image="{arch}-base-raspbian"
     local docker_cli=()
+    local docker_tags=()
 
     # Select builder image
     if [ "$build_arch" != "armhf" ]; then
@@ -405,14 +428,13 @@ function build_base_raspbian_image() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
 function build_addon() {
     local build_arch=$1
 
-    local docker_cli=()
     local build_from=""
     local version=""
     local image=""
@@ -422,6 +444,8 @@ function build_addon() {
     local description=""
     local url=""
     local args=""
+    local docker_cli=()
+    local docker_tags=()
 
     # Read addon build.json
     if [ -f "$TARGET/build.json" ]; then
@@ -473,17 +497,18 @@ function build_addon() {
 
     # Start build
     run_build "$TARGET" "$repository" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
 function build_supervisor() {
     local build_arch=$1
 
+    local version=""
     local image="{arch}-hassio-supervisor"
     local build_from="homeassistant/${build_arch}-base-python:3.7"
     local docker_cli=()
-    local version=""
+    local docker_tags=()
 
     # Read version
     version="$(python3 "$TARGET/setup.py" -V)"
@@ -491,7 +516,7 @@ function build_supervisor() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -501,13 +526,14 @@ function build_hassio_cli() {
     local image="{arch}-hassio-cli"
     local build_from="homeassistant/${build_arch}-base:latest"
     local docker_cli=()
+    local docker_tags=()
 
     # Metadata
     docker_cli+=("--label" "io.hass.type=cli")
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -515,8 +541,9 @@ function build_homeassistant_base() {
     local build_arch=$1
 
     local image="{arch}-homeassistant-base"
-    local build_from="homeassistant/${build_arch}-base-python:3.7"
+    local build_from="homeassistant/${build_arch}-base-python:${PYTHON}"
     local docker_cli=()
+    local docker_tags=()
 
     # Set labels
     docker_cli+=("--label" "io.hass.type=base")
@@ -525,7 +552,7 @@ function build_homeassistant_base() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -535,13 +562,14 @@ function build_homeassistant() {
     local image="{arch}-homeassistant"
     local build_from="homeassistant/${build_arch}-homeassistant-base"
     local docker_cli=()
+    local docker_tags=()
 
     # Set labels
     docker_cli+=("--label" "io.hass.type=homeassistant")
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -549,9 +577,10 @@ function build_homeassistant_machine() {
     local build_machine=$1
 
     local image="${build_machine}-homeassistant"
+    local dockerfile="$TARGET/$build_machine"
     local build_from=""
     local docker_cli=()
-    local dockerfile="$TARGET/$build_machine"
+    local docker_tags=()
 
     # Set labels
     docker_cli+=("--label" "io.hass.machine=$build_machine")
@@ -559,7 +588,7 @@ function build_homeassistant_machine() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "" docker_cli[@]
+        "$build_from" "" docker_cli[@] docker_tags[@]
 }
 
 
@@ -568,8 +597,9 @@ function build_homeassistant_landingpage() {
     local build_arch=$2
 
     local image="${build_machine}-homeassistant"
-    local docker_cli=()
     local build_from="homeassistant/${build_arch}-base:latest"
+    local docker_cli=()
+    local docker_tags=()
 
     # Set labels
     docker_cli+=("--label" "io.hass.machine=$build_machine")
@@ -577,25 +607,31 @@ function build_homeassistant_landingpage() {
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
 function build_wheels() {
     local build_arch=$1
 
-    local image="{arch}-wheels"
-    local build_from="homeassistant/${build_arch}-base-python:3.7"
-    local docker_cli=()
     local version=""
+    local image="{arch}-wheels"
+    local build_from="homeassistant/${build_arch}-base-python:${PYTHON}"
+    local docker_cli=()
+    local docker_tags=()
 
     # Metadata
     version="$(python3 "$TARGET/setup.py" -V)"
     docker_cli+=("--label" "io.hass.type=wheels")
 
+    # If latest python version/build
+    if [ "$DOCKER_LATEST" == "true" ] && [ -z "$VERSION" ]; then
+        docker_tags=("$version")
+    fi
+
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@]
+    run_build "$TARGET" "$DOCKER_HUB" "$image" "$version-${PYTHON}" \
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
 
@@ -746,7 +782,8 @@ while [[ $# -gt 0 ]]; do
         --base-python)
             BUILD_TYPE="base-python"
             SELF_CACHE=true
-            VERSION=$2
+            VERSION="$(echo "$2" | cut -d '=' -f 1)"
+            ALPINE="$(echo "$2" | cut -d '=' -f 2)"
             shift
             ;;
         --base-ubuntu)
@@ -776,7 +813,8 @@ while [[ $# -gt 0 ]]; do
             ;;
         --homeassistant-base)
             BUILD_TYPE="homeassistant-base"
-            VERSION=$2
+            VERSION="$(echo "$2" | cut -d '=' -f 1)"
+            PYTHON="$(echo "$2" | cut -d '=' -f 2)"
             shift
             ;;
         --homeassistant)
@@ -802,6 +840,8 @@ while [[ $# -gt 0 ]]; do
             ;;
         --builder-wheels)
             BUILD_TYPE="builder-wheels"
+            PYTHON=$2
+            shift
             ;;
 
         *)
