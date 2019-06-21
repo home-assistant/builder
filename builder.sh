@@ -17,6 +17,7 @@ DOCKER_LOGIN=false
 DOCKER_LOCAL=false
 CROSSBUILD_CLEANUP=true
 SELF_CACHE=false
+RELEASE_TAG=false
 GIT_REPOSITORY=
 GIT_BRANCH="master"
 TARGET=
@@ -71,6 +72,8 @@ Options:
         Overwrite image name of build / support {arch}.
     --release <VERSION>
         Additional version information like for base images.
+    --release-tag
+        Use this as main tag.
 
   Architecture
     --armhf
@@ -364,7 +367,7 @@ function build_base_python_image() {
     local docker_tags=()
 
     # If latest python version/build
-    if [ "$DOCKER_LATEST" == "true" ]; then
+    if [ "$RELEASE_TAG" == "true" ]; then
         docker_tags=("$VERSION")
     fi
 
@@ -749,6 +752,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --self-cache)
             SELF_CACHE=true
+            ;;
+        --release-tag)
+            RELEASE_TAG=true
             ;;
         -d|--docker-hub)
             DOCKER_HUB=$2
