@@ -220,7 +220,6 @@ function run_build() {
     # Overwrites
     if [ -n "$DOCKER_HUB" ]; then repository="$DOCKER_HUB"; fi
     if [ -n "$IMAGE" ]; then image="$IMAGE"; fi
-    if [ -n "$VERSION" ]; then version="$VERSION"; fi
 
     # Replace {arch} with build arch for image
     # shellcheck disable=SC1117
@@ -512,7 +511,12 @@ function build_supervisor() {
     local docker_tags=()
 
     # Read version
-    version="$(python3 "$TARGET/setup.py" -V)"
+    if [ "$VERSION" == "dev" ]; then
+        version="dev"
+    else
+        version="$(python3 "$TARGET/setup.py" -V)"
+    fi
+
     docker_cli+=("--label" "io.hass.type=supervisor")
 
     # Start build
@@ -621,14 +625,20 @@ function build_wheels() {
     local docker_cli=()
     local docker_tags=()
 
-    # Metadata
-    version="$(python3 "$TARGET/setup.py" -V)"
-    docker_cli+=("--label" "io.hass.type=wheels")
+    # Read version
+    if [ "$VERSION" == "dev" ]; then
+        version="dev"
+    else
+        version="$(python3 "$TARGET/setup.py" -V)"
+    fi
 
     # If latest python version/build
     if [ "$DOCKER_LATEST" == "true" ] && [ -z "$VERSION" ]; then
         docker_tags=("$version")
     fi
+
+    # Metadata
+    docker_cli+=("--label" "io.hass.type=wheels")
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$version-${PYTHON}" \
