@@ -288,7 +288,7 @@ function run_build() {
     # Tag images
     for tag_image in "${docker_tags[@]}"; do
         docker tag "$repository/$image:$version" "$repository/$image:$tag_image"
-        push_images+=("$tag_image")
+        push_images+=("$repository/$image:$tag_image")
     done
 
     # Push images
