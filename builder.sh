@@ -861,6 +861,7 @@ while [[ $# -gt 0 ]]; do
         --builder-wheels)
             BUILD_TYPE="builder-wheels"
             PYTHON=$2
+            SELF_CACHE=true
             shift
             ;;
 
