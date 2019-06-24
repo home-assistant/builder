@@ -126,7 +126,7 @@ Options:
         Build our base raspbian images.
     --base-ubuntu <VERSION>
         Build our base ubuntu images.
-    --supervisor
+    --supervisor <PYTHON_TAG>
         Build a Hass.io supervisor image.
     --hassio-cli <VERSION>
         Build a Hass.io OS CLI image.
@@ -510,7 +510,7 @@ function build_supervisor() {
 
     local version=""
     local image="{arch}-hassio-supervisor"
-    local build_from="homeassistant/${build_arch}-base-python:3.7"
+    local build_from="homeassistant/${build_arch}-base-python:${PYTHON}"
     local docker_cli=()
     local docker_tags=()
 
@@ -637,7 +637,7 @@ function build_wheels() {
     fi
 
     # If latest python version/build
-    if [ "$DOCKER_LATEST" == "true" ] && [ -z "$VERSION" ]; then
+    if [ "$RELEASE_TAG" == "true" ]; then
         docker_tags=("$version")
     fi
 
@@ -828,6 +828,8 @@ while [[ $# -gt 0 ]]; do
             ;;
         --supervisor)
             BUILD_TYPE="supervisor"
+            PYTHON=$2
+            shift
             ;;
         --homeassistant-base)
             BUILD_TYPE="homeassistant-base"
