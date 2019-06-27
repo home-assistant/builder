@@ -285,7 +285,7 @@ function run_build() {
 
     # Tag latest
     if [ "$DOCKER_LATEST" == "true" ]; then
-        push_tags+=("latest")
+        docker_tags+=("latest")
     fi
 
     # Tag images
