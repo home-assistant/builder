@@ -328,7 +328,7 @@ function build_builder() {
         bashio::log.error "$build_arch not supported for builder"
         return 1
     else
-        build_from=homeassistant/${build_arch}-base-ubuntu:16.04
+        build_from=homeassistant/${build_arch}-base-ubuntu:18.04
     fi
 
     # Set Labels
