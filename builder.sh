@@ -576,6 +576,15 @@ function build_homeassistant() {
     # Set labels
     docker_cli+=("--label" "io.hass.type=homeassistant")
 
+    # Add additional tag
+    if [[ "$VERSION" =~ d ]]; then
+        docker_tags=("dev")
+    elif [[ "$VERSION" =~ b ]]; then
+        docker_tags=("beta")
+    else
+        docker_tags=("stable")
+    fi
+
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
@@ -594,6 +603,15 @@ function build_homeassistant_machine() {
     # Set labels
     docker_cli+=("--label" "io.hass.machine=$build_machine")
     docker_cli+=("--file" "$dockerfile")
+
+    # Add additional tag
+    if [[ "$VERSION" =~ d ]]; then
+        docker_tags=("dev")
+    elif [[ "$VERSION" =~ b ]]; then
+        docker_tags=("beta")
+    else
+        docker_tags=("stable")
+    fi
 
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
