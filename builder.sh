@@ -578,11 +578,11 @@ function build_homeassistant() {
 
     # Add additional tag
     if [[ "$VERSION" =~ d ]]; then
-        docker_tags=("dev")
+        docker_tags+=("dev")
     elif [[ "$VERSION" =~ b ]]; then
-        docker_tags=("beta")
+        docker_tags+=("beta")
     else
-        docker_tags=("stable")
+        docker_tags+=("stable")
     fi
 
     # Start build
@@ -606,11 +606,11 @@ function build_homeassistant_machine() {
 
     # Add additional tag
     if [[ "$VERSION" =~ d ]]; then
-        docker_tags=("dev")
+        docker_tags+=("dev")
     elif [[ "$VERSION" =~ b ]]; then
-        docker_tags=("beta")
+        docker_tags+=("beta")
     else
-        docker_tags=("stable")
+        docker_tags+=("stable")
     fi
 
     # Start build
