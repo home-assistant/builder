@@ -134,6 +134,8 @@ Options:
         Build a Hass.io supervisor image.
     --hassio-cli <VERSION>
         Build a Hass.io OS CLI image.
+    --hassio-dns <VERSION>
+        Build a Hass.io CoreDNS image.
     --homeassistant-base <VERSION=PYTHON_TAG>
         Build a Home-Assistant base image.
     --homeassistant <VERSION>
@@ -576,6 +578,23 @@ function build_hassio_cli() {
 }
 
 
+function build_hassio_dns() {
+    local build_arch=$1
+
+    local image="{arch}-hassio-dns"
+    local build_from="homeassistant/${build_arch}-base:latest"
+    local docker_cli=()
+    local docker_tags=()
+
+    # Metadata
+    docker_cli+=("--label" "io.hass.type=dns")
+
+    # Start build
+    run_build "$TARGET" "$DOCKER_HUB" "$image" "" \
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
+}
+
+
 function build_homeassistant_base() {
     local build_arch=$1
 
@@ -875,6 +894,11 @@ while [[ $# -gt 0 ]]; do
             VERSION=$2
             shift
             ;;
+        --hassio-dns)
+            BUILD_TYPE="dns"
+            VERSION=$2
+            shift
+            ;;
         --builder)
             BUILD_TYPE="builder"
             VERSION=$2
@@ -972,6 +996,8 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_base_raspbian_image "$arch") &
         elif [ "$BUILD_TYPE" == "cli" ]; then
             (build_hassio_cli "$arch") &
+        elif [ "$BUILD_TYPE" == "dns" ]; then
+            (build_hassio_dns "$arch") &
         elif [ "$BUILD_TYPE" == "supervisor" ]; then
             (build_supervisor "$arch") &
         elif [ "$BUILD_TYPE" == "homeassistant-base" ]; then
