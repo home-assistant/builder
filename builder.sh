@@ -128,6 +128,8 @@ Options:
         Build our base raspbian images.
     --base-ubuntu <VERSION>
         Build our base ubuntu images.
+    --base-debian <VERSION>
+        Build our base debian images.
     --supervisor <PYTHON_TAG>
         Build a Hass.io supervisor image.
     --hassio-cli <VERSION>
@@ -404,6 +406,32 @@ function build_base_ubuntu_image() {
     docker_cli+=("--label" "io.hass.type=base")
     docker_cli+=("--label" "io.hass.base.version=$RELEASE")
     docker_cli+=("--label" "io.hass.base.name=ubuntu")
+    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
+
+    # Start build
+    run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
+}
+
+
+function build_base_debian_image() {
+    local build_arch=$1
+
+    local build_from=""
+    local image="{arch}-base-debian"
+    local docker_cli=()
+    local docker_tags=()
+
+    # Select builder image
+    if [ "$build_arch" == "armhf" ]; then
+        bashio::log.error "$build_arch not supported for debian"
+        return 1
+    fi
+
+    # Set type
+    docker_cli+=("--label" "io.hass.type=base")
+    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
+    docker_cli+=("--label" "io.hass.base.name=debian")
     docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
 
     # Start build
@@ -830,6 +858,12 @@ while [[ $# -gt 0 ]]; do
             VERSION=$2
             shift
             ;;
+        --base-debian)
+            BUILD_TYPE="base-debian"
+            SELF_CACHE=true
+            VERSION=$2
+            shift
+            ;;
         --base-raspbian)
             BUILD_TYPE="base-raspbian"
             SELF_CACHE=true
@@ -932,6 +966,8 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_base_python_image "$arch") &
         elif [ "$BUILD_TYPE" == "base-ubuntu" ]; then
             (build_base_ubuntu_image "$arch") &
+        elif [ "$BUILD_TYPE" == "base-debian" ]; then
+            (build_base_debian_image "$arch") &
         elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
             (build_base_raspbian_image "$arch") &
         elif [ "$BUILD_TYPE" == "cli" ]; then
