@@ -573,7 +573,7 @@ function build_hassio_cli() {
     docker_cli+=("--label" "io.hass.type=cli")
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "" \
+    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
@@ -590,7 +590,7 @@ function build_hassio_dns() {
     docker_cli+=("--label" "io.hass.type=dns")
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "" \
+    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
