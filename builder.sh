@@ -858,6 +858,12 @@ while [[ $# -gt 0 ]]; do
             VERSION=$2
             shift
             ;;
+        --base-debian)
+            BUILD_TYPE="base-debian"
+            SELF_CACHE=true
+            VERSION=$2
+            shift
+            ;;
         --base-raspbian)
             BUILD_TYPE="base-raspbian"
             SELF_CACHE=true
