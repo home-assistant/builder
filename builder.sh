@@ -637,6 +637,7 @@ function build_homeassistant() {
     # Inject HA
     if [ -d /homeassistant ]; then
         cp -r /homeassisant "$TARGET/homeassistant"
+        rm -rf "$TARGET/homeassistant/.git" "$TARGET/homeassistant/docs" "$TARGET/homeassistant/tests"
     fi
 
     # Start build
