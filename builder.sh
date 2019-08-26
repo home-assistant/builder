@@ -635,8 +635,9 @@ function build_homeassistant() {
     fi
 
     # Inject HA
-    if [ -d /homeassistant ]; then
-        cp -r /homeassisant "$TARGET/homeassistant"
+    if [ -e /homeassistant ]; then
+        bashio::log.info "Inject HomeAssistant folder into build"
+        cp -r /homeassistant "$TARGET/homeassistant"
         rm -rf "$TARGET/homeassistant/.git" "$TARGET/homeassistant/docs" "$TARGET/homeassistant/tests"
     fi
 
