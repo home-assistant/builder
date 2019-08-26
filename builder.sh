@@ -634,6 +634,11 @@ function build_homeassistant() {
         docker_tags+=("stable")
     fi
 
+    # Inject HA
+    if [ -d /homeassistant ]; then
+        cp -r /homeassisant "$TARGET/homeassistant"
+    fi
+
     # Start build
     run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
