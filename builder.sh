@@ -424,12 +424,6 @@ function build_base_debian_image() {
     local docker_cli=()
     local docker_tags=()
 
-    # Select builder image
-    if [ "$build_arch" == "armhf" ]; then
-        bashio::log.error "$build_arch not supported for debian"
-        return 1
-    fi
-
     # Set type
     docker_cli+=("--label" "io.hass.type=base")
     docker_cli+=("--label" "io.hass.base.version=$RELEASE")
