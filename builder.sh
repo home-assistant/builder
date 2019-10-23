@@ -177,10 +177,6 @@ function start_docker() {
         fi
     done
     bashio::log.info "Docker was initialized"
-
-    if [ "$DOCKER_LOGIN" == "true" ]; then
-        docker login
-    fi
 }
 
 
@@ -969,6 +965,11 @@ mkdir -p /data
 # Setup docker env
 init_crosscompile
 start_docker
+
+# Login into dockerhub
+if [ "$DOCKER_LOGIN" == "true" ]; then
+    docker login
+fi
 
 # Load external repository
 if [ -n "$GIT_REPOSITORY" ]; then
