@@ -15,6 +15,8 @@ DOCKER_CACHE=true
 DOCKER_LATEST=true
 DOCKER_PUSH=true
 DOCKER_LOGIN=false
+DOCKER_USER=
+DOCKER_PASS=
 DOCKER_LOCAL=false
 CROSSBUILD_CLEANUP=true
 SELF_CACHE=false
@@ -107,6 +109,10 @@ Options:
        Check if the version already exists before starting the build.
     --docker-login
        Login into docker hub on startup (need '-ti' docker opts)
+    --docker-user
+       Username to login into docker with
+    --docker-pass
+       Password to login into docker with
     --no-crossbuild-cleanup
        Don't cleanup the crosscompile feature (for multible builds)
 
@@ -831,6 +837,12 @@ while [[ $# -gt 0 ]]; do
         --docker-login)
             DOCKER_LOGIN=true
             ;;
+        --docker-user)
+            DOCKER_USER=$2
+	    ;;
+        --docker-pass)
+  	    DOCKER_PASS=$2
+	    ;;
         --no-crossbuild-cleanup)
             CROSSBUILD_CLEANUP=false
             ;;
@@ -968,7 +980,11 @@ start_docker
 
 # Login into dockerhub
 if [ "$DOCKER_LOGIN" == "true" ]; then
+    if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASS" ]; then
+      docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"
+    else
     docker login
+    fi
 fi
 
 # Load external repository
