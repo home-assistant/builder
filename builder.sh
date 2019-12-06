@@ -14,7 +14,8 @@ DOCKER_HUB_CHECK=false
 DOCKER_CACHE=true
 DOCKER_LATEST=true
 DOCKER_PUSH=true
-DOCKER_LOGIN=false
+DOCKER_USER=
+DOCKER_PASSWORD=
 DOCKER_LOCAL=false
 CROSSBUILD_CLEANUP=true
 SELF_CACHE=false
@@ -105,8 +106,10 @@ Options:
        Set or overwrite the docker repository.
     --docker-hub-check
        Check if the version already exists before starting the build.
-    --docker-login
-       Login into docker hub on startup (need '-ti' docker opts)
+    --docker-user
+       Username to login into docker with
+    --docker-password
+       Password to login into docker with
     --no-crossbuild-cleanup
        Don't cleanup the crosscompile feature (for multible builds)
 
@@ -828,9 +831,12 @@ while [[ $# -gt 0 ]]; do
         --docker-hub-check)
             DOCKER_HUB_CHECK=true
             ;;
-        --docker-login)
-            DOCKER_LOGIN=true
-            ;;
+        --docker-user)
+            DOCKER_USER=$2
+	    ;;
+        --docker-password)
+  	    DOCKER_PASSWORD=$2
+	    ;;
         --no-crossbuild-cleanup)
             CROSSBUILD_CLEANUP=false
             ;;
@@ -967,8 +973,8 @@ init_crosscompile
 start_docker
 
 # Login into dockerhub
-if [ "$DOCKER_LOGIN" == "true" ]; then
-    docker login
+if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASSWORD" ]; then
+  docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
 fi
 
 # Load external repository
