@@ -836,7 +836,7 @@ while [[ $# -gt 0 ]]; do
             shift
 	    ;;
         --docker-password)
-  	    DOCKER_PASSWORD=$2
+            DOCKER_PASSWORD=$2
             shift
 	    ;;
         --no-crossbuild-cleanup)
