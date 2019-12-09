@@ -833,9 +833,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         --docker-user)
             DOCKER_USER=$2
+            shift
 	    ;;
         --docker-password)
-  	    DOCKER_PASSWORD=$2
+            DOCKER_PASSWORD=$2
+            shift
 	    ;;
         --no-crossbuild-cleanup)
             CROSSBUILD_CLEANUP=false
