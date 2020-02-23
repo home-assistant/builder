@@ -943,7 +943,7 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
     for arch in "${BUILD_LIST[@]}"; do
         if [ "$BUILD_TYPE" == "addon" ]; then
             (build_addon "$arch") &
-        if [ "$BUILD_TYPE" == "generic" ]; then
+        elif [ "$BUILD_TYPE" == "generic" ]; then
             (build_generic "$arch") &
         elif [ "$BUILD_TYPE" == "base" ]; then
             (build_base_image "$arch") &
