@@ -912,7 +912,7 @@ if [ "${#BUILD_LIST[@]}" -eq 0 ] && ! [[ "$BUILD_TYPE" =~ ^homeassistant-(machin
 fi
 
 # Check other args
-if [ "$BUILD_TYPE" != "addon" ] && [ -z "$DOCKER_HUB" ]; then
+if [ "$BUILD_TYPE" != "addon" ] && [ "$BUILD_TYPE" != "generic" ] && [ -z "$DOCKER_HUB" ]; then
     bashio::exit.nok "Please set a docker hub!"
 fi
 
@@ -943,6 +943,8 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
     for arch in "${BUILD_LIST[@]}"; do
         if [ "$BUILD_TYPE" == "addon" ]; then
             (build_addon "$arch") &
+        if [ "$BUILD_TYPE" == "generic" ]; then
+            (build_generic "$arch") &
         elif [ "$BUILD_TYPE" == "base" ]; then
             (build_base_image "$arch") &
         elif [ "$BUILD_TYPE" == "base-python" ]; then
