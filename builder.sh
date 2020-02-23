@@ -515,7 +515,7 @@ function build_generic() {
         build_from="$(jq --raw-output ".build_from.$build_arch // empty" "$TARGET/build.json")"
         args="$(jq --raw-output '.args // empty | keys[]' "$TARGET/build.json")"
         labels="$(jq --raw-output '.labels // empty | keys[]' "$TARGET/build.json")"
-        raw_image="$(jq --raw-output '.image // empty' "$TARGET/config.json")"
+        raw_image="$(jq --raw-output '.image // empty' "$TARGET/build.json")"
     fi
 
     # Set defaults build things
