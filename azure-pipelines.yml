@@ -65,7 +65,7 @@ jobs:
       sudo docker run --rm --privileged \
         -v ~/.docker:/root/.docker \
         -v /run/docker.sock:/run/docker.sock:rw -v $(pwd):/data:ro \
-        homeassistant/amd64-builder:$(versionBuilder) --generic dev \
+        homeassistant/amd64-builder:$(versionBuilder) --builder dev \
         --amd64 --armv7 --aarch64 -t /data --docker-hub homeassistant
     displayName: 'Build DEV'
 
