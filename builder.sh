@@ -119,6 +119,8 @@ Options:
   Internals:
     --addon
         Default on. Run all things for an addon build.
+    --generic <VERSION>
+        Build based on the build.json
     --builder <VERSION>
         Build a it self.
     --builder-wheels <PYTHON_TAG>
@@ -133,12 +135,6 @@ Options:
         Build our base ubuntu images.
     --base-debian <VERSION>
         Build our base debian images.
-    --supervisor <PYTHON_TAG>
-        Build a Hass.io supervisor image.
-    --hassio-cli <VERSION>
-        Build a Hass.io OS CLI image.
-    --hassio-dns <VERSION>
-        Build a Hass.io CoreDNS image.
     --homeassistant-base <VERSION=PYTHON_TAG>
         Build a Home-Assistant base image.
     --homeassistant <VERSION>
@@ -318,31 +314,6 @@ function run_build() {
 
 
 #### HassIO functions ####
-
-function build_builder() {
-    local build_arch=$1
-
-    local image="{arch}-builder"
-    local build_from=""
-    local version=""
-    local docker_cli=()
-    local docker_tags=()
-
-    # Select builder image
-    if [ "$build_arch" == "i386" ] || [ "$build_arch" == "armhf" ]; then
-        bashio::log.error "$build_arch not supported for builder"
-        return 1
-    else
-        build_from=homeassistant/${build_arch}-base-ubuntu:18.04
-    fi
-
-    # Set Labels
-    docker_cli+=("--label" "io.hass.type=builder")
-
-    # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
 
 function build_base_image() {
     local build_arch=$1
@@ -530,60 +501,57 @@ function build_addon() {
 }
 
 
-function build_supervisor() {
+function build_generic() {
     local build_arch=$1
 
-    local version=""
-    local image="{arch}-hassio-supervisor"
-    local build_from="homeassistant/${build_arch}-base-python:${PYTHON}"
+    local build_from=""
+    local image=""
+    local repository=""
+    local raw_image=""
+    local args=""
     local docker_cli=()
     local docker_tags=()
 
-    # Read version
-    if [ "$VERSION" == "dev" ]; then
-        version="dev"
-    else
-        version="$(python3 "$TARGET/setup.py" -V)"
+    # Read build.json
+    if [ -f "$TARGET/build.json" ]; then
+        build_from="$(jq --raw-output ".build_from.$build_arch // empty" "$TARGET/build.json")"
+        args="$(jq --raw-output '.args // empty | keys[]' "$TARGET/build.json")"
+        labels="$(jq --raw-output '.labels // empty | keys[]' "$TARGET/build.json")"
+        raw_image="$(jq --raw-output '.image // empty' "$TARGET/config.json")"
     fi
 
-    docker_cli+=("--label" "io.hass.type=supervisor")
+    # Set defaults build things
+    if [ -z "$build_from" ]; then
+        bashio::log.error "$build_arch not supported for this built"
+        return 1
+    fi
+
+    # Read data from image
+    if [ -z "$raw_image" ]; then
+        bashio::log.error "Can't find the image tag on build.json"
+        return 1
+    fi
+    repository="$(echo "$raw_image" | cut -f 1 -d '/')"
+    image="$(echo "$raw_image" | cut -f 2 -d '/')"
+
+    # Additional build args
+    if [ -n "$args" ]; then
+        for arg in $args; do
+            value="$(jq --raw-output ".args.$arg" "$TARGET/build.json")"
+            docker_cli+=("--build-arg" "$arg=$value")
+        done
+    fi
+
+    # Additional build labels
+    if [ -n "$labels" ]; then
+        for label in $labels; do
+            value="$(jq --raw-output ".labels.$label" "$TARGET/build.json")"
+            docker_cli+=("--label" "$label=$value")
+        done
+    fi
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_hassio_cli() {
-    local build_arch=$1
-
-    local image="{arch}-hassio-cli"
-    local build_from="homeassistant/${build_arch}-base:latest"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Metadata
-    docker_cli+=("--label" "io.hass.type=cli")
-
-    # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_hassio_dns() {
-    local build_arch=$1
-
-    local image="{arch}-hassio-dns"
-    local build_from="homeassistant/${build_arch}-base:latest"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Metadata
-    docker_cli+=("--label" "io.hass.type=dns")
-
-    # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
+    run_build "$TARGET" "$repository" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
@@ -894,24 +862,9 @@ while [[ $# -gt 0 ]]; do
             VERSION=$2
             shift
             ;;
-        --hassio-cli)
-            BUILD_TYPE="cli"
+        --generic)
+            BUILD_TYPE="generic"
             VERSION=$2
-            shift
-            ;;
-        --hassio-dns)
-            BUILD_TYPE="dns"
-            VERSION=$2
-            shift
-            ;;
-        --builder)
-            BUILD_TYPE="builder"
-            VERSION=$2
-            shift
-            ;;
-        --supervisor)
-            BUILD_TYPE="supervisor"
-            PYTHON=$2
             shift
             ;;
         --homeassistant-base)
@@ -992,8 +945,6 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
     for arch in "${BUILD_LIST[@]}"; do
         if [ "$BUILD_TYPE" == "addon" ]; then
             (build_addon "$arch") &
-        elif [ "$BUILD_TYPE" == "builder" ]; then
-            (build_builder "$arch") &
         elif [ "$BUILD_TYPE" == "base" ]; then
             (build_base_image "$arch") &
         elif [ "$BUILD_TYPE" == "base-python" ]; then
@@ -1004,12 +955,6 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_base_debian_image "$arch") &
         elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
             (build_base_raspbian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "cli" ]; then
-            (build_hassio_cli "$arch") &
-        elif [ "$BUILD_TYPE" == "dns" ]; then
-            (build_hassio_dns "$arch") &
-        elif [ "$BUILD_TYPE" == "supervisor" ]; then
-            (build_supervisor "$arch") &
         elif [ "$BUILD_TYPE" == "homeassistant-base" ]; then
             (build_homeassistant_base "$arch") &
         elif [ "$BUILD_TYPE" == "homeassistant" ]; then
