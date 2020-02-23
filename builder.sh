@@ -543,7 +543,7 @@ function build_generic() {
     # Additional build labels
     if [ -n "$labels" ]; then
         for label in $labels; do
-            value="$(jq --raw-output ".labels.$label" "$TARGET/build.json")"
+            value="$(jq --raw-output ".labels.\"$label\"" "$TARGET/build.json")"
             docker_cli+=("--label" "$label=$value")
         done
     fi
