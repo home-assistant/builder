@@ -133,8 +133,6 @@ Options:
         Build our base ubuntu images.
     --base-debian <VERSION>
         Build our base debian images.
-    --homeassistant-base <VERSION=PYTHON_TAG>
-        Build a Home-Assistant base image.
     --homeassistant <VERSION>
         Build the generic release for a Home-Assistant.
     --homeassisant-landingpage
@@ -554,25 +552,6 @@ function build_generic() {
 }
 
 
-function build_homeassistant_base() {
-    local build_arch=$1
-
-    local image="{arch}-homeassistant-base"
-    local build_from="homeassistant/${build_arch}-base-python:${PYTHON}"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Set labels
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$VERSION")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
-
-    # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
 function build_homeassistant() {
     local build_arch=$1
 
@@ -865,12 +844,6 @@ while [[ $# -gt 0 ]]; do
             VERSION=$2
             shift
             ;;
-        --homeassistant-base)
-            BUILD_TYPE="homeassistant-base"
-            VERSION="$(echo "$2" | cut -d '=' -f 1)"
-            PYTHON="$(echo "$2" | cut -d '=' -f 2)"
-            shift
-            ;;
         --homeassistant)
             BUILD_TYPE="homeassistant"
             SELF_CACHE=true
@@ -955,8 +928,6 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_base_debian_image "$arch") &
         elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
             (build_base_raspbian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "homeassistant-base" ]; then
-            (build_homeassistant_base "$arch") &
         elif [ "$BUILD_TYPE" == "homeassistant" ]; then
             (build_homeassistant "$arch") &
         elif [ "$BUILD_TYPE" == "builder-wheels" ]; then
