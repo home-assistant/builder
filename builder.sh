@@ -844,11 +844,6 @@ while [[ $# -gt 0 ]]; do
             VERSION=$2
             shift
             ;;
-        --builder)
-            BUILD_TYPE="builder"
-            VERSION=$2
-            shift
-            ;;
         --homeassistant)
             BUILD_TYPE="homeassistant"
             SELF_CACHE=true
