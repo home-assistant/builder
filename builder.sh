@@ -133,8 +133,6 @@ Options:
         Build our base ubuntu images.
     --base-debian <VERSION>
         Build our base debian images.
-    --homeassistant <VERSION>
-        Build the generic release for a Home-Assistant.
     --homeassisant-landingpage
         Build the landingpage for machines.
     --homeassistant-machine <VERSION=ALL,X,Y>
@@ -504,6 +502,7 @@ function build_generic() {
     local image=""
     local repository=""
     local raw_image=""
+    local version_tag=false
     local args=""
     local docker_cli=()
     local docker_tags=()
@@ -514,6 +513,7 @@ function build_generic() {
         args="$(jq --raw-output '.args // empty | keys[]' "$TARGET/build.json")"
         labels="$(jq --raw-output '.labels // empty | keys[]' "$TARGET/build.json")"
         raw_image="$(jq --raw-output '.image // empty' "$TARGET/build.json")"
+        version_tag="$(jq --raw-output '.version_tag // false' "$TARGET/build.json")"
     fi
 
     # Set defaults build things
@@ -546,41 +546,19 @@ function build_generic() {
         done
     fi
 
+    # Version Tag
+    if [ "$version_tag" == "true" ]; then
+        if [[ "$VERSION" =~ d ]]; then
+            docker_tags+=("dev")
+        elif [[ "$VERSION" =~ b ]]; then
+            docker_tags+=("beta")
+        else
+            docker_tags+=("stable")
+        fi
+    fi
+
     # Start build
     run_build "$TARGET" "$repository" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_homeassistant() {
-    local build_arch=$1
-
-    local image="{arch}-homeassistant"
-    local build_from="homeassistant/${build_arch}-homeassistant-base"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Set labels
-    docker_cli+=("--label" "io.hass.type=homeassistant")
-
-    # Add additional tag
-    if [[ "$VERSION" =~ d ]]; then
-        docker_tags+=("dev")
-    elif [[ "$VERSION" =~ b ]]; then
-        docker_tags+=("beta")
-    else
-        docker_tags+=("stable")
-    fi
-
-    # Inject HA
-    if [ -e /homeassistant ]; then
-        bashio::log.info "Inject HomeAssistant folder into build"
-        cp -r /homeassistant "$TARGET/homeassistant"
-        rm -rf "$TARGET/homeassistant/.git" "$TARGET/homeassistant/docs" "$TARGET/homeassistant/tests"
-    fi
-
-    # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
 }
 
@@ -844,12 +822,6 @@ while [[ $# -gt 0 ]]; do
             VERSION=$2
             shift
             ;;
-        --homeassistant)
-            BUILD_TYPE="homeassistant"
-            SELF_CACHE=true
-            VERSION=$2
-            shift
-            ;;
         --homeassistant-landingpage)
             BUILD_TYPE="homeassistant-landingpage"
             SELF_CACHE=true
@@ -928,8 +900,6 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_base_debian_image "$arch") &
         elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
             (build_base_raspbian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "homeassistant" ]; then
-            (build_homeassistant "$arch") &
         elif [ "$BUILD_TYPE" == "builder-wheels" ]; then
             (build_wheels "$arch") &
         elif [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
