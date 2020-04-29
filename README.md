@@ -31,6 +31,13 @@ Local repository:
 docker run --rm --privileged -v ~/.docker:/root/.docker -v /my_addon:/data homeassistant/amd64-builder --all -t /data
 ```
 
+## Docker Daemon
+By default the image will run docker-in-docker.  You can use the host docker daemon by bind mounting the host docker socket to `/var/run/docker.sock` inside the container.  For example, to do this with the _Local repository_ example above (assuming the host docker socket is at `/var/run/docker.sock`:
+
+```bash
+docker run --rm --privileged -v ~/.docker:/root/.docker -v /var/run/docker.sock:/var/run/docker.sock:ro -v /my_addon:/data homeassistant/amd64-builder --all -t /data
+```
+
 ## Help
 
 ```bash
