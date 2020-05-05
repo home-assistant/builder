@@ -296,7 +296,7 @@ function run_build() {
             for j in {1..3}; do
                 bashio::log.info "Start upload of $i (attempt #${j}/3)"
                 if docker push "$i" > /dev/null 2>&1; then
-                    bashio::log.info "Upload succeeded on attempt #$j"
+                    bashio::log.info "Upload succeeded on attempt #${j}"
                     break
                 fi
                 bashio::log.warning "Upload failed on attempt #${j}"
