@@ -299,7 +299,7 @@ function run_build() {
                     bashio::log.info "Upload succeeded on attempt #$j"
                     break
                 fi
-                bashio::log.warning "Upload failed on attempt #$j"
+                bashio::log.warning "Upload failed on attempt #${j}"
                 sleep 30
             done
         done
