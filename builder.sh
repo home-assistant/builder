@@ -111,7 +111,7 @@ Options:
     --docker-password
        Password to login into docker with
     --no-crossbuild-cleanup
-       Don't cleanup the crosscompile feature (for multible builds)
+       Don't cleanup the crosscompile feature (for multiple builds)
 
     Use the host docker socket if mapped into container:
        /var/run/docker.sock
