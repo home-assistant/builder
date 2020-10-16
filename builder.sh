@@ -19,6 +19,7 @@ DOCKER_PASSWORD=
 DOCKER_LOCAL=false
 CROSSBUILD_CLEANUP=true
 SELF_CACHE=false
+CUSTOM_CACHE_TAG=
 RELEASE_TAG=false
 GIT_REPOSITORY=
 GIT_BRANCH="master"
@@ -102,6 +103,8 @@ Options:
        Disable cache for the build (from latest).
     --self-cache
        Use same tag as cache tag instead latest.
+    --cache-tag
+       Use a custom tag for the build cache.
     -d, --docker-hub <DOCKER_REPOSITORY>
        Set or overwrite the docker repository.
     --docker-hub-check
@@ -238,7 +241,9 @@ function run_build() {
 
     # Init Cache
     if [ "$DOCKER_CACHE" == "true" ]; then
-        if [ "$SELF_CACHE" == "true" ]; then
+        if [ -n "$CUSTOM_CACHE_TAG" ]; then
+            cache_tag="$CUSTOM_CACHE_TAG"
+        elif [ "$SELF_CACHE" == "true" ]; then
             cache_tag="$version"
         fi
 
@@ -743,6 +748,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --self-cache)
             SELF_CACHE=true
+            ;;
+        --cache-tag)
+            CUSTOM_CACHE_TAG=$2
             ;;
         --release-tag)
             RELEASE_TAG=true
