@@ -1,0 +1,25 @@
+name: 'Home Assistant builder'
+description: 'Multi-purpose cross-compile docker builder'
+inputs:
+  args:
+    description: 'Arguments passed to the builder'
+    required: true
+    default: '--help'
+runs:
+  using: "composite"
+  steps: 
+    - shell: bash
+      id: build
+      run: |
+        docker run --rm --privileged \
+            -v /var/run/docker.sock:/var/run/docker.sock:ro \
+            -v ~/.docker:/root/.docker \
+            -v ${{ github.workspace }}:/data \
+            homeassistant/amd64-builder \
+            ${{ inputs.args }}
+    - shell: bash
+      id: verify
+      run: docker images
+branding:
+  icon: 'home'  
+  color: 'blue'

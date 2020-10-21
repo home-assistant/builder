@@ -299,8 +299,12 @@ function run_build() {
                     bashio::log.info "Upload succeeded on attempt #${j}"
                     break
                 fi
-                bashio::log.warning "Upload failed on attempt #${j}"
-                sleep 30
+                if [[ "${j}" == "3" ]]; then
+                    bashio::exit.nok "Upload failed on attempt #${j}"
+                else
+                    bashio::log.warning "Upload failed on attempt #${j}"
+                    sleep 30
+                fi
             done
         done
     fi
