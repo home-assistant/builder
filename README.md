@@ -84,7 +84,7 @@ on:
     types: [published]
 
 jobs:
-  pubnlish:
+  publish:
     name: Publish
     runs-on: ubuntu-latest
     steps:
