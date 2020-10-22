@@ -1,0 +1,31 @@
+name: 'Test'
+
+on:
+  push:
+    branches:
+      - master
+  pull_request: ~
+
+jobs:
+  build:
+    name: Test action build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: False
+      matrix:
+        architecture:
+          - aarch64
+          - amd64
+          - armv7
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+
+    - name: Test ${{ matrix.architecture }} builder action
+      uses: ./ # This is self-refrencing
+      with:
+        args: |
+          --test \
+          --${{ matrix.architecture }} \
+          --target /data \
+          --generic ${{ github.sha }}

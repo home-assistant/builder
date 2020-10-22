@@ -43,3 +43,63 @@ docker run --rm --privileged -v ~/.docker:/root/.docker -v /var/run/docker.sock:
 ```bash
 $ docker run --rm --privileged homeassistant/amd64-builder --help
 ```
+
+## GitHub Action
+
+You can use this repository as a GitHub action to test and/or publish your builds.
+
+Use the `with.args` key to pass in arguments to the builder, to see what arguments are supported you can run the [help](#help) or look in the [builder.sh file](./builder.sh)
+
+### Test action example
+
+```yaml
+name: 'Test'
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Test build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+    - name: Test build
+      uses: home-assistant/hassio-builder@master
+      with:
+        args: |
+          --test \
+          --all \
+          --target /data \
+          --docker-hub userspace-name
+```
+
+### Publish action example
+
+```yaml
+name: 'Publish'
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Publish
+      uses: home-assistant/hassio-builder@master
+      with:
+        args: |
+          --all \
+          --target /data \
+          --docker-hub userspace-name
+```
