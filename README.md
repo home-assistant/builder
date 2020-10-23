@@ -1,5 +1,3 @@
-[![Build Status](https://dev.azure.com/home-assistant/Hass.io/_apis/build/status/builder?branchName=master)](https://dev.azure.com/home-assistant/Hass.io/_build/latest?definitionId=4&branchName=master)
-
 # Build docker env
 
 ## Install
