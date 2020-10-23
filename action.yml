@@ -5,7 +5,7 @@ inputs:
     description: 'Arguments passed to the builder'
     required: true
     default: '--help'
-  args:
+  version:
     description: 'The version of the builder'
     required: false
     default: 'dev'
