@@ -1,10 +1,10 @@
+name: 'Shellcheck'
+
 on:
   push:
     branch:
       - master
   pull_request:  
-
-name: 'Trigger: Push action'
 
 jobs:
   shellcheck:

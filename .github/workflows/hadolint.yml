@@ -1,9 +1,11 @@
 name: hadolint
+
 on:
   push:
     branches:
       - master
   pull_request:
+
 jobs:
   hadolint:
     name: lint
