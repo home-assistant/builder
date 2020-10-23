@@ -103,7 +103,7 @@ Options:
        Disable cache for the build (from latest).
     --self-cache
        Use same tag as cache tag instead latest.
-    --cache-tag
+    --cache-tag <TAG>
        Use a custom tag for the build cache.
     -d, --docker-hub <DOCKER_REPOSITORY>
        Set or overwrite the docker repository.
@@ -755,6 +755,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --cache-tag)
             CUSTOM_CACHE_TAG=$2
+            shift
             ;;
         --release-tag)
             RELEASE_TAG=true
