@@ -1,10 +1,7 @@
 name: 'Test'
 
 on:
-  push:
-    branches:
-      - master
-  pull_request: ~
+  pull_request:
 
 jobs:
   build:
@@ -21,7 +18,7 @@ jobs:
     - name: Checkout the repository
       uses: actions/checkout@v2
 
-    - name: Test ${{ matrix.architecture }} builder action
+    - name: Test builder
       uses: ./ # This is self-refrencing
       with:
         args: |

@@ -5,6 +5,10 @@ inputs:
     description: 'Arguments passed to the builder'
     required: true
     default: '--help'
+  version:
+    description: 'The version of the builder'
+    required: false
+    default: 'dev'
 runs:
   using: "composite"
   steps: 
@@ -15,7 +19,7 @@ runs:
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
             -v ~/.docker:/root/.docker \
             -v ${{ github.workspace }}:/data \
-            homeassistant/amd64-builder \
+            homeassistant/amd64-builder:${{ inputs.version }} \
             ${{ inputs.args }}
     - shell: bash
       id: verify
