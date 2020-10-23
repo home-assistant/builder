@@ -5,13 +5,18 @@ inputs:
     description: 'Arguments passed to the builder'
     required: true
     default: '--help'
-  version:
-    description: 'The version of the builder'
-    required: false
-    default: 'dev'
 runs:
   using: "composite"
   steps: 
+    - shell: bash
+      id: version
+      run: |
+        input=$(echo "${{ github.action_path }}" | cut -d"/" -f8 )
+        if [[ "${input}" == "master" ]] || [[ -z "${input}" ]]; then
+          input="latest"
+        fi
+        echo "::set-output name=version::${input}"
+
     - shell: bash
       id: build
       run: |
@@ -19,8 +24,9 @@ runs:
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
             -v ~/.docker:/root/.docker \
             -v ${{ github.workspace }}:/data \
-            homeassistant/amd64-builder:${{ inputs.version }} \
+            homeassistant/amd64-builder:${{ steps.version.outputs.version }} \
             ${{ inputs.args }}
+
     - shell: bash
       id: verify
       run: docker images

@@ -48,8 +48,6 @@ You can use this repository as a GitHub action to test and/or publish your build
 
 Use the `with.args` key to pass in arguments to the builder, to see what arguments are supported you can run the [help](#help) or look in the [builder.sh file](./builder.sh)
 
-To spesify a version of the runner you want to use, set the `with.version` key, this defaults to `dev`.
-
 ### Test action example
 
 ```yaml
