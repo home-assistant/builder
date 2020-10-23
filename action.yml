@@ -11,12 +11,11 @@ runs:
     - shell: bash
       id: version
       run: |
-        echo "${{ toJson(github) }}"
-        input=$(echo ${{ github.action_path }} | cut -d"/" -f8 )
-        if [[ "${input}" == "master" ]]; then
-          echo "::set-output name=version::dev"
-        else
-          echo "::set-output name=version::$input"
+        input=$(echo "${{ github.action_path }}" | cut -d"/" -f8 )
+        if [[ "${input}" == "master" ]] || [[ -z "${input}" ]]; then
+          input="dev"
+        fi
+        echo "::set-output name=version::${input}"
 
     - shell: bash
       id: build
