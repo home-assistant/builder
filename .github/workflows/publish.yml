@@ -1,13 +1,18 @@
-name: 'Publish dev'
+name: 'Publish'
 
 on:
+  release:
+    types: [published]
   push:
     branches:
       - master
 
+env:
+  GIT_TAG_NAME: dev
+
 jobs:
   publish:
-    name: Publish dev
+    name: Publish
     runs-on: ubuntu-latest
     strategy:
       fail-fast: False
@@ -20,16 +25,20 @@ jobs:
     - name: Checkout the repository
       uses: actions/checkout@v2
 
+    - uses: olegtarasov/get-tag@v2
+      if: github.event_name == 'release'
+      name: Set tag envronment variable
+
     - name: Login to DockerHub
       uses: docker/login-action@v1
       with:
         username: homeassistant
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Publish builder
+    - name: Publish ${{ matrix.architecture }} builder
       uses: home-assistant/builder@master
       with:
         args: |
           --${{ matrix.architecture }} \
           --target /data \
-          --generic dev
+          --generic $GIT_TAG_NAME
