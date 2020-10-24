@@ -14,13 +14,6 @@ jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: False
-      matrix:
-        architecture:
-          - aarch64
-          - amd64
-          - armv7
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v2
@@ -35,10 +28,10 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Publish ${{ matrix.architecture }} builder
+    - name: Publish builder
       uses: home-assistant/builder@master
       with:
         args: |
-          --${{ matrix.architecture }} \
+          --amd64 --armv7 --aarch64 \
           --target /data \
           --generic $GIT_TAG_NAME

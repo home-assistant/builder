@@ -7,22 +7,24 @@ jobs:
   build:
     name: Test action build
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: False
-      matrix:
-        architecture:
-          - aarch64
-          - amd64
-          - armv7
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v2
 
-    - name: Test builder
-      uses: ./ # This is self-refrencing
+    - name: Build builder
+      uses: home-assistant/builder@master
       with:
         args: |
           --test \
-          --${{ matrix.architecture }} \
+          --amd64 \
+          --target /data \
+          --generic latest
+
+    - name: Test builder
+      uses: ./
+      with:
+        args: |
+          --test \
+          --amd64 --armv7 --aarch64 \
           --target /data \
           --generic ${{ github.sha }}

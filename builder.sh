@@ -527,8 +527,8 @@ function build_generic() {
 
     # Set defaults build things
     if [ -z "$build_from" ]; then
-        bashio::log.error "$build_arch not supported for this build"
-        return 1
+        bashio::log.warning "$build_arch not supported for this build"
+        return
     fi
 
     # Read data from image

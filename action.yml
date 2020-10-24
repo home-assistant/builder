@@ -20,12 +20,44 @@ runs:
     - shell: bash
       id: build
       run: |
-        docker run --rm --privileged \
-            -v /var/run/docker.sock:/var/run/docker.sock:ro \
-            -v ~/.docker:/root/.docker \
-            -v ${{ github.workspace }}:/data \
-            homeassistant/amd64-builder:${{ steps.version.outputs.version }} \
-            ${{ inputs.args }}
+        declare -a BUILD_ARCHS
+        BUILD_ARGS="${{ inputs.args }}"
+
+        if [[ "$BUILD_ARGS" =~ "--all" ]]; then
+          BUILD_ARGS=${BUILD_ARGS//--all/}
+          BUILD_ARCHS=("amd64" "armhf" "armv7" "i386" "aarch64")
+        else
+          if [[ "$BUILD_ARGS" =~ "--amd64" ]]; then
+            BUILD_ARGS=${BUILD_ARGS//--amd64/}
+            BUILD_ARCHS+=("amd64")
+          fi
+          if [[ "$BUILD_ARGS" =~ "--armhf" ]]; then
+            BUILD_ARGS=${BUILD_ARGS//--armhf/}
+            BUILD_ARCHS+=("armhf")
+          fi
+          if [[ "$BUILD_ARGS" =~ "--armv7" ]]; then
+            BUILD_ARGS=${BUILD_ARGS//--armv7/}
+            BUILD_ARCHS+=("armv7")
+          fi
+          if [[ "$BUILD_ARGS" =~ "--i386" ]]; then
+            BUILD_ARGS=${BUILD_ARGS//--i386/}
+            BUILD_ARCHS+=("i386")
+          fi
+          if [[ "$BUILD_ARGS" =~ "--aarch64" ]]; then
+            BUILD_ARGS=${BUILD_ARGS//--aarch64/}
+            BUILD_ARCHS+=("aarch64")
+          fi
+        fi
+
+        for architecture in ${BUILD_ARCHS[@]}; do
+          docker run --rm --privileged \
+              -v /var/run/docker.sock:/var/run/docker.sock:ro \
+              -v ~/.docker:/root/.docker \
+              -v ${{ github.workspace }}:/data \
+              homeassistant/amd64-builder:${{ steps.version.outputs.version }} \
+              --"$architecture" \
+              $BUILD_ARGS
+        done
 
     - shell: bash
       id: verify
