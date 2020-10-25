@@ -11,16 +11,27 @@ env:
   GIT_TAG_NAME: dev
 
 jobs:
+  init:
+    name: Initialize build
+    runs-on: ubuntu-latest
+    outputs:
+      architectures: ${{ steps.info.outputs.architectures }}
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+
+    - name: Get information
+      id: info
+      uses: home-assistant/actions/helpers/info@master
+
   publish:
-    name: Publish
+    name: Publish builder
+    needs: init
     runs-on: ubuntu-latest
     strategy:
       fail-fast: False
       matrix:
-        architecture:
-          - aarch64
-          - amd64
-          - armv7
+        architecture: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v2
