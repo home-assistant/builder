@@ -36,6 +36,7 @@ BUILD_ERROR=()
 declare -A BUILD_MACHINE=(
                           [intel-nuc]="amd64" \
                           [odroid-c2]="aarch64" \
+                          [odroid-c4]="aarch64" \
                           [odroid-n2]="aarch64" \
                           [odroid-xu]="armv7" \
                           [qemuarm]="armhf" \
