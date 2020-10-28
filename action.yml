@@ -29,7 +29,8 @@ runs:
 
     - shell: bash
       id: verify
-      run: docker images
+      run: |
+        docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" --filter label=io.hass.version
 branding:
   icon: 'home'  
   color: 'blue'
