@@ -41,6 +41,8 @@ runs:
       run: |
         docker images \
           --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" \
+          --filter reference="*/*" \
+          --filter reference="*" \
           --filter since=${{ steps.builder.outputs.id }}
 branding:
   icon: 'home'  
