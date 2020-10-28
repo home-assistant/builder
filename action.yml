@@ -18,6 +18,15 @@ runs:
         echo "::set-output name=version::${input}"
 
     - shell: bash
+      run: docker pull homeassistant/amd64-builder:${{ steps.version.outputs.version }}
+
+    - shell: bash
+      id: builder
+      run: |
+        builder=$(docker images homeassistant/amd64-builder:${{ steps.version.outputs.version }} -q)
+        echo "::set-output name=id::$builder"
+
+    - shell: bash
       id: build
       run: |
         docker run --rm --privileged \
@@ -30,7 +39,9 @@ runs:
     - shell: bash
       id: verify
       run: |
-        docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" --filter label=io.hass.version
+        docker images \
+          --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" \
+          --filter since=${{ steps.builder.outputs.id }}
 branding:
   icon: 'home'  
   color: 'blue'
