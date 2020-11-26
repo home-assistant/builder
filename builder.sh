@@ -802,8 +802,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --addon)
             BUILD_TYPE="addon"
-            VERSION=$2
-            shift
             ;;
         --base)
             BUILD_TYPE="base"
