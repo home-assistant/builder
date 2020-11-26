@@ -477,7 +477,7 @@ function build_addon() {
     mapfile -t supported_arch < <(jq --raw-output '.arch // empty' "$TARGET/config.json")
     
     # Read version from config.json when empty
-    if [ -z "$VERSION" ]
+    if [ -z "$VERSION" ]; then
     	version="$(jq --raw-output '.version' "$TARGET/config.json")"
     fi
 
