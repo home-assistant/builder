@@ -440,7 +440,6 @@ function build_addon() {
     local build_arch=$1
 
     local build_from=""
-    local version=""
     local image=""
     local repository=""
     local raw_image=""
@@ -474,9 +473,13 @@ function build_addon() {
     name="$(jq --raw-output '.name // empty' "$TARGET/config.json" | sed "s/'//g")"
     description="$(jq --raw-output '.description // empty' "$TARGET/config.json" | sed "s/'//g")"
     url="$(jq --raw-output '.url // empty' "$TARGET/config.json")"
-    version="$(jq --raw-output '.version' "$TARGET/config.json")"
     raw_image="$(jq --raw-output '.image // empty' "$TARGET/config.json")"
     mapfile -t supported_arch < <(jq --raw-output '.arch // empty' "$TARGET/config.json")
+    
+    # Read version from config.json when empty
+    if [ -z "$VERSION" ]
+    	version="$(jq --raw-output '.version' "$TARGET/config.json")"
+    fi
 
     # Check arch
     if [[ ! ${supported_arch[*]} =~ ${build_arch} ]]; then
@@ -799,6 +802,8 @@ while [[ $# -gt 0 ]]; do
             ;;
         --addon)
             BUILD_TYPE="addon"
+            VERSION=$2
+            shift
             ;;
         --base)
             BUILD_TYPE="base"
