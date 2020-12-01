@@ -440,11 +440,11 @@ function build_addon() {
     local build_arch=$1
 
     local build_from=""
+    local version=""
     local image=""
     local repository=""
     local raw_image=""
     local name=""
-    local version=""
     local description=""
     local url=""
     local args=""
