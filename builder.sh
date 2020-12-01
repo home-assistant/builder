@@ -444,6 +444,7 @@ function build_addon() {
     local repository=""
     local raw_image=""
     local name=""
+    local version=""
     local description=""
     local url=""
     local args=""
@@ -476,8 +477,10 @@ function build_addon() {
     raw_image="$(jq --raw-output '.image // empty' "$TARGET/config.json")"
     mapfile -t supported_arch < <(jq --raw-output '.arch // empty' "$TARGET/config.json")
     
-    # Read version from config.json when empty
-    if [ -z "$VERSION" ]; then
+    # Read version from config.json when VERSION is not set
+    if [ -n "$VERSION" ]; then
+    	version="$VERSION"
+    else
     	version="$(jq --raw-output '.version' "$TARGET/config.json")"
     fi
 
