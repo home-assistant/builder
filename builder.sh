@@ -230,7 +230,7 @@ function run_build() {
     if [ -n "$DOCKER_HUB" ]; then repository="$DOCKER_HUB"; fi
     if [ -n "$IMAGE" ]; then image="$IMAGE"; fi
 
-    echo $repository >$MULTIARCH_TMP_REPO
+    echo "$repository" >$MULTIARCH_TMP_REPO
 
     # Replace {arch} with build arch for image
     # shellcheck disable=SC1117
@@ -685,11 +685,14 @@ function extract_machine_build() {
 
 function create_multiarch_manifest() {
     local docker_amend=()
-    local docker_manifest="$(cat $MULTIARCH_TMP_REPO)/$DOCKER_MULTIARCH_IMAGE:$VERSION"
+    local docker_manifest=""
 
-    for image in $(cat $MULTIARCH_TMP_IMAGES); do
+    docker_manifest="$(cat $MULTIARCH_TMP_REPO)/$DOCKER_MULTIARCH_IMAGE:$VERSION"
+
+    while read -r image
+    do
         docker_amend+=("--amend" "$image")
-    done
+    done < $MULTIARCH_TMP_IMAGES
 
     bashio::log.info "Create multiarch manifest $docker_manifest"
     docker manifest create "$docker_manifest" \
