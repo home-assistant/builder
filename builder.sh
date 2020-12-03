@@ -17,6 +17,7 @@ DOCKER_PUSH=true
 DOCKER_USER=
 DOCKER_PASSWORD=
 DOCKER_LOCAL=false
+DOCKER_MULTIARCH_IMAGE=
 CROSSBUILD_CLEANUP=true
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
@@ -33,6 +34,8 @@ BUILD_LIST=()
 BUILD_TYPE="addon"
 BUILD_TASKS=()
 BUILD_ERROR=()
+MULTIARCH_TMP_IMAGES="/tmp/multiarch_images"
+MULTIARCH_TMP_REPO="/tmp/multiarch_repo"
 declare -A BUILD_MACHINE=(
                           [intel-nuc]="amd64" \
                           [odroid-c2]="aarch64" \
@@ -116,6 +119,9 @@ Options:
        Password to login into docker with
     --no-crossbuild-cleanup
        Don't cleanup the crosscompile feature (for multiple builds)
+    --multi-arch <IMAGENAME>
+       Create multiarch manifest (only for 'generic' build)
+       (Need Docker cli with experimental cli features enabled)
 
     Use the host docker socket if mapped into container:
        /var/run/docker.sock
@@ -224,6 +230,8 @@ function run_build() {
     if [ -n "$DOCKER_HUB" ]; then repository="$DOCKER_HUB"; fi
     if [ -n "$IMAGE" ]; then image="$IMAGE"; fi
 
+    echo $repository >$MULTIARCH_TMP_REPO
+
     # Replace {arch} with build arch for image
     # shellcheck disable=SC1117
     image="$(echo "$image" | sed -r "s/\{arch\}/$build_arch/g")"
@@ -283,6 +291,9 @@ function run_build() {
 
     push_images+=("$repository/$image:$version")
     bashio::log.info "Finish build for $repository/$image:$version"
+
+    # Collect builded images
+    echo "$repository/$image:$version" >>$MULTIARCH_TMP_IMAGES
 
     # Tag latest
     if [ "$DOCKER_LATEST" == "true" ]; then
@@ -671,6 +682,37 @@ function extract_machine_build() {
     fi
 }
 
+
+function create_multiarch_manifest() {
+    local docker_amend=()
+    local docker_manifest="$(cat $MULTIARCH_TMP_REPO)/$DOCKER_MULTIARCH_IMAGE:$VERSION"
+
+    for image in $(cat $MULTIARCH_TMP_IMAGES); do
+        docker_amend+=("--amend" "$image")
+    done
+
+    bashio::log.info "Create multiarch manifest $docker_manifest"
+    docker manifest create "$docker_manifest" \
+        "${docker_amend[@]}"
+
+    # Push manifest
+    if [ "$DOCKER_PUSH" == "true" ]; then
+        for j in {1..3}; do
+            bashio::log.info "Start upload of manifest $docker_manifest (attempt #${j}/3)"
+            if docker manifest push "$docker_manifest" > /dev/null 2>&1; then
+                bashio::log.info "Upload succeeded on attempt #${j}"
+                break
+            fi
+            if [[ "${j}" == "3" ]]; then
+                bashio::exit.nok "Upload failed on attempt #${j}"
+            else
+                bashio::log.warning "Upload failed on attempt #${j}"
+                sleep 30
+            fi
+        done
+    fi
+}
+
 #### initialized cross-build ####
 
 function init_crosscompile() {
@@ -779,6 +821,10 @@ while [[ $# -gt 0 ]]; do
         --no-crossbuild-cleanup)
             CROSSBUILD_CLEANUP=false
             ;;
+        --multi-arch)
+            DOCKER_MULTIARCH_IMAGE=$2
+            shift
+            ;;
         --armhf)
             BUILD_LIST+=("armhf")
             ;;
@@ -875,6 +921,9 @@ if [ "$BUILD_TYPE" != "addon" ] && [ "$BUILD_TYPE" != "generic" ] && [ -z "$DOCK
     bashio::exit.nok "Please set a docker hub!"
 fi
 
+if [ -n "$DOCKER_MULTIARCH_IMAGE" ] && [ "$BUILD_TYPE" == "generic" ] && [[ $(jq --raw-output '.experimental' ~/.docker/config.json) != "enabled" ]]; then
+    bashio::exit.nok "Please enable experimental docker cli features!"
+fi
 
 #### Main ####
 
@@ -941,6 +990,11 @@ fi
 
 # Wait until all build jobs are done
 wait "${BUILD_TASKS[@]}"
+
+# Create multiarch manifest
+if [ -n "$DOCKER_MULTIARCH_IMAGE" ] && [ "$BUILD_TYPE" == "generic" ]; then
+    create_multiarch_manifest
+fi
 
 # Cleanup docker env
 clean_crosscompile

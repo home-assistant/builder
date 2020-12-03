@@ -122,6 +122,9 @@ Build handling
       Password to login into docker with
   --no-crossbuild-cleanup
       Don't cleanup the crosscompile feature (for multiple builds)
+    --multi-arch <IMAGENAME>
+       Create multiarch manifest (only for 'generic' build)
+       (Need Docker cli with experimental cli features enabled)
 
   Use the host docker socket if mapped into container:
       /var/run/docker.sock
