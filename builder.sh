@@ -474,9 +474,15 @@ function build_addon() {
     name="$(jq --raw-output '.name // empty' "$TARGET/config.json" | sed "s/'//g")"
     description="$(jq --raw-output '.description // empty' "$TARGET/config.json" | sed "s/'//g")"
     url="$(jq --raw-output '.url // empty' "$TARGET/config.json")"
-    version="$(jq --raw-output '.version' "$TARGET/config.json")"
     raw_image="$(jq --raw-output '.image // empty' "$TARGET/config.json")"
     mapfile -t supported_arch < <(jq --raw-output '.arch // empty' "$TARGET/config.json")
+    
+    # Read version from config.json when VERSION is not set
+    if [ -n "$VERSION" ]; then
+    	version="$VERSION"
+    else
+    	version="$(jq --raw-output '.version' "$TARGET/config.json")"
+    fi
 
     # Check arch
     if [[ ! ${supported_arch[*]} =~ ${build_arch} ]]; then
