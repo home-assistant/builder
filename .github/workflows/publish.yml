@@ -36,7 +36,7 @@ jobs:
     - name: Checkout the repository
       uses: actions/checkout@v2
 
-    - uses: olegtarasov/get-tag@v2
+    - uses: olegtarasov/get-tag@v2.1
       if: github.event_name == 'release'
       name: Set tag envronment variable
 
