@@ -28,8 +28,9 @@ jobs:
         args: |
           --test \
           --all \
-          --target /data \
-          --docker-hub userspace-name
+          --target addon-folder \
+          --docker-hub user-name \
+          --image {arch}-your-addon-name
 ```
 
 ### Publish action example
@@ -58,8 +59,9 @@ jobs:
       with:
         args: |
           --all \
-          --target /data \
-          --docker-hub userspace-name
+          --target addon-folder \
+          --docker-hub user-name \
+          --image {arch}-your-addon-name
 ```
 
 ## Arguments
