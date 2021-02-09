@@ -29,7 +29,7 @@ jobs:
           --test \
           --all \
           --target addon-folder \
-          --docker-hub user-name
+          --docker-hub user-name-or-space-name
 ```
 
 ### Publish action example
@@ -59,7 +59,7 @@ jobs:
         args: |
           --all \
           --target addon-folder \
-          --docker-hub user-name
+          --docker-hub user-name-or-space-name
 ```
 
 ## Arguments
