@@ -34,6 +34,7 @@ BUILD_TYPE="addon"
 BUILD_TASKS=()
 BUILD_ERROR=()
 declare -A BUILD_MACHINE=(
+                          [generic-x86-64]="amd64" \
                           [intel-nuc]="amd64" \
                           [odroid-c2]="aarch64" \
                           [odroid-c4]="aarch64" \
