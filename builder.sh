@@ -138,7 +138,7 @@ Options:
         Build our base ubuntu images.
     --base-debian <VERSION>
         Build our base debian images.
-    --homeassisant-landingpage
+    --homeassistant-landingpage
         Build the landingpage for machines.
     --homeassistant-machine <VERSION=ALL,X,Y>
         Build the machine based image for a release.
