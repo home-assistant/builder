@@ -682,29 +682,8 @@ function extract_machine_build() {
 
 function init_crosscompile() {
     bashio::log.info "Setup crosscompiling feature"
-    (
-        mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
-        update-binfmts --enable qemu-arm
-        update-binfmts --enable qemu-aarch64
-    ) > /dev/null 2>&1 || bashio::log.warning "Can't enable crosscompiling feature"
-}
-
-
-function clean_crosscompile() {
-    if [ "$CROSSBUILD_CLEANUP" == "false" ]; then
-        bashio::log.info "Skeep crosscompiling cleanup"
-        return 0
-    fi
-
-    bashio::log.info "Clean crosscompiling feature"
-    if [ -f /proc/sys/fs/binfmt_misc ]; then
-        umount /proc/sys/fs/binfmt_misc || true
-    fi
-
-    (
-        update-binfmts --disable qemu-arm
-        update-binfmts --disable qemu-aarch64
-    ) > /dev/null 2>&1 || bashio::log.warning "No crosscompiling feature found for cleanup"
+    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes \
+        > /dev/null 2>&1 || bashio::log.warning "Can't enable crosscompiling feature"
 }
 
 #### Error handling ####
@@ -950,7 +929,6 @@ fi
 wait "${BUILD_TASKS[@]}"
 
 # Cleanup docker env
-clean_crosscompile
 stop_docker
 
 # No Errors
