@@ -17,7 +17,6 @@ DOCKER_PUSH=true
 DOCKER_USER=
 DOCKER_PASSWORD=
 DOCKER_LOCAL=false
-CROSSBUILD_CLEANUP=true
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
 RELEASE_TAG=false
@@ -115,8 +114,6 @@ Options:
        Username to login into docker with
     --docker-password
        Password to login into docker with
-    --no-crossbuild-cleanup
-       Don't cleanup the crosscompile feature (for multiple builds)
 
     Use the host docker socket if mapped into container:
        /var/run/docker.sock
@@ -681,6 +678,11 @@ function extract_machine_build() {
 #### initialized cross-build ####
 
 function init_crosscompile() {
+    if [[ "$(uname -m)" != "x86_64" ]]; then
+        bashio::log.info "No crossbuild support on host"
+        return 0
+    fi
+
     bashio::log.info "Setup crosscompiling feature"
     docker run --rm --privileged multiarch/qemu-user-static --reset -p yes \
         > /dev/null 2>&1 || bashio::log.warning "Can't enable crosscompiling feature"
@@ -762,9 +764,6 @@ while [[ $# -gt 0 ]]; do
             DOCKER_PASSWORD=$2
             shift
 	    ;;
-        --no-crossbuild-cleanup)
-            CROSSBUILD_CLEANUP=false
-            ;;
         --armhf)
             BUILD_LIST+=("armhf")
             ;;
