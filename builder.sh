@@ -303,7 +303,7 @@ function run_build() {
 
     # Use shaddow repository
     if bashio::var.has_value "${shadow_repository}"; then
-        bashio::log.info "Generate repository shaddow images"
+        bashio::log.info "Generate repository shadow images"
         docker tag "${repository}/${image}:${version}" "${shadow_repository}/${image}:${version}"
         for tag_image in "${docker_tags[@]}"; do
             bashio::log.info "Create shadow-image tag: ${tag_image}"
