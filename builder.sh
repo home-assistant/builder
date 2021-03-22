@@ -1,6 +1,6 @@
 #!/usr/bin/env bashio
 ######################
-# Hass.io Build-env
+# Home Assistant Build-env
 ######################
 set -e
 set +u
