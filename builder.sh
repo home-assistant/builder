@@ -216,42 +216,43 @@ function run_build() {
     local build_arch=$6
     local docker_cli=("${!7}")
     local docker_tags=("${!8}")
+    local shadow_repository=${9}
 
     local push_images=()
     local cache_tag="latest"
     local metadata
 
     # Overwrites
-    if [ -n "$DOCKER_HUB" ]; then repository="$DOCKER_HUB"; fi
-    if [ -n "$IMAGE" ]; then image="$IMAGE"; fi
+    if bashio::var.has_value "${DOCKER_HUB}"; then repository="${DOCKER_HUB}"; fi
+    if bashio::var.has_value "${IMAGE}"; then image="${IMAGE}"; fi
 
     # Replace {arch} with build arch for image
     # shellcheck disable=SC1117
-    image="$(echo "$image" | sed -r "s/\{arch\}/$build_arch/g")"
+    image="$(echo "${image}" | sed -r "s/\{arch\}/${build_arch}/g")"
 
     # Check if image exists on docker hub
-    if [ "$DOCKER_HUB_CHECK" == "true" ]; then
-        metadata="$(curl -s "https://hub.docker.com/v2/repositories/$repository/$image/tags/$version/")"
+    if bashio::varl.true "$DOCKER_HUB_CHECK"; then
+        metadata="$(curl -s "https://hub.docker.com/v2/repositories/${repository}/${image}/tags/${version}/")"
 
-        if [ -n "$metadata" ] && [ "$(echo "$metadata" | jq --raw-output '.name')" == "$version" ]; then
-            bashio::log.info "Skip build, found $image:$version on dockerhub"
+        if bashio::var.has_value "${metadata}" && [[ "$(echo "${metadata}" | jq --raw-output '.name')" == "${version}" ]]; then
+            bashio::log.info "Skip build, found ${image}:${version} on dockerhub"
             return 0
         else
-            bashio::log.info "Start build, $image:$version is not on dockerhub"
+            bashio::log.info "Start build, ${image}:${version} is not on dockerhub"
         fi
     fi
 
     # Init Cache
-    if [ "$DOCKER_CACHE" == "true" ]; then
-        if [ -n "$CUSTOM_CACHE_TAG" ]; then
-            cache_tag="$CUSTOM_CACHE_TAG"
-        elif [ "$SELF_CACHE" == "true" ]; then
-            cache_tag="$version"
+    if bashio::var.true "${DOCKER_CACHE}"; then
+        if bashio::var.has_value "${CUSTOM_CACHE_TAG}"; then
+            cache_tag="${CUSTOM_CACHE_TAG}"
+        elif bashio::var.true "${SELF_CACHE}"; then
+            cache_tag="${version}"
         fi
 
-        bashio::log.info "Init cache for $repository/$image:$version with tag $cache_tag"
-        if docker pull "$repository/$image:$cache_tag" > /dev/null 2>&1; then
-            docker_cli+=("--cache-from" "$repository/$image:$cache_tag")
+        bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag}"
+        if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1; then
+            docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
         else
             docker_cli+=("--no-cache")
             bashio::log.warning "No cache image found. Disabling cache for this build."
@@ -261,51 +262,63 @@ function run_build() {
     fi
 
     # do we know the arch of build?
-    if [ -n "$build_arch" ]; then
-        docker_cli+=("--label" "io.hass.arch=$build_arch")
-        docker_cli+=("--build-arg" "BUILD_ARCH=$build_arch")
+    if bashio::var.has_value "${build_arch}"; then
+        docker_cli+=("--label" "io.hass.arch=${build_arch}")
+        docker_cli+=("--build-arg" "BUILD_ARCH=${build_arch}")
     fi
 
     # Validate the base image
-    codenotary_validate "$build_from"
+    codenotary_validate "${build_from}"
 
     # Build image
-    bashio::log.info "Run build for $repository/$image:$version"
-    docker build --pull -t "$repository/$image:$version" \
-        --label "io.hass.version=$version" \
-        --build-arg "BUILD_FROM=$build_from" \
-        --build-arg "BUILD_VERSION=$version" \
+    bashio::log.info "Run build for ${repository}/${image}:${version}"
+    docker build --pull -t "${repository}/${image}:${version}" \
+        --label "io.hass.version=${version}" \
+        --build-arg "BUILD_FROM=${build_from}" \
+        --build-arg "BUILD_VERSION=${version}" \
         "${docker_cli[@]}" \
-        "$build_dir"
+        "${build_dir}"
 
     # Success?
     # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
-        BUILD_ERROR+=("$repository/$image:$version")
+        BUILD_ERROR+=("${repository}/${image}:${version}")
         return 0
     fi
 
-    push_images+=("$repository/$image:$version")
-    bashio::log.info "Finish build for $repository/$image:$version"
+    push_images+=("${repository}/${image}:${version}")
+    bashio::log.info "Finish build for ${repository}/${image}:${version}"
 
     # Tag latest
-    if [ "$DOCKER_LATEST" == "true" ]; then
+    if bashio::var.true "${DOCKER_LATEST}"; then
         docker_tags+=("latest")
     fi
 
     # Tag images
     for tag_image in "${docker_tags[@]}"; do
         bashio::log.info "Create image tag: ${tag_image}"
-        docker tag "$repository/$image:$version" "$repository/$image:$tag_image"
-        push_images+=("$repository/$image:$tag_image")
+        docker tag "${repository}/${image}:${version}" "${repository}/${image}:${tag_image}"
+        push_images+=("${repository}/${image}:${tag_image}")
     done
 
+    # Use shaddow repository
+    if bashio::var.has_value "${shadow_repository}"; then
+        bashio::log.info "Generate repository shaddow images"
+        docker tag "${repository}/${image}:${version}" "${shadow_repository}/${image}:${version}"
+        for tag_image in "${docker_tags[@]}"; do
+            bashio::log.info "Create shadow-image tag: ${tag_image}"
+            docker tag "${repository}/${image}:${version}" "${shadow_repository}/${image}:${tag_image}"
+            push_images+=("${shadow_repository}/${image}:${tag_image}")
+        done
+        push_images+=("${shadow_repository}/${image}:${version}")
+    fi
+
     # Push images
-    if [ "$DOCKER_PUSH" == "true" ]; then
+    if bashio::var.true "${DOCKER_PUSH}"; then
         for i in "${push_images[@]}"; do
             for j in {1..3}; do
-                bashio::log.info "Start upload of $i (attempt #${j}/3)"
-                if docker push "$i" > /dev/null 2>&1; then
+                bashio::log.info "Start upload of ${i} (attempt #${j}/3)"
+                if docker push "${i}" > /dev/null 2>&1; then
                     bashio::log.info "Upload succeeded on attempt #${j}"
                     break
                 fi
@@ -329,12 +342,13 @@ function run_build() {
 function build_base_image() {
     local build_arch=${1}
 
-    local build_from=""
-    local image=""
-    local repository=""
-    local raw_image=""
+    local build_from=
+    local image=
+    local repository=
+    local shadow_repository=
+    local raw_image=
     local version_tag=false
-    local args=""
+    local args=
     local docker_cli=()
     local docker_tags=()
 
@@ -345,6 +359,7 @@ function build_base_image() {
         labels="$(jq --raw-output '.labels // empty | keys[]' "${TARGET}/build.json")"
         raw_image="$(jq --raw-output '.image // empty' "${TARGET}/build.json")"
         version_tag="$(jq --raw-output '.version_tag // false' "${TARGET}/build.json")"
+        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
     fi
 
     # Set defaults build things
@@ -398,22 +413,23 @@ function build_base_image() {
 
     # Start build
     run_build "${TARGET}" "${repository}" "${image}" "${VERSION_BASE}" \
-        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@]
+        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}"
 }
 
 
 function build_addon() {
     local build_arch=$1
 
-    local build_from=""
-    local version=""
-    local image=""
-    local repository=""
-    local raw_image=""
-    local name=""
-    local description=""
-    local url=""
-    local args=""
+    local build_from=
+    local version=
+    local image=
+    local repository=
+    local shadow_repository=
+    local raw_image=
+    local name=
+    local description=
+    local url=
+    local args=
     local docker_cli=()
     local docker_tags=()
 
@@ -421,6 +437,7 @@ function build_addon() {
     if [ -f "$TARGET/build.json" ]; then
         build_from="$(jq --raw-output ".build_from.$build_arch // empty" "$TARGET/build.json")"
         args="$(jq --raw-output '.args // empty | keys[]' "$TARGET/build.json")"
+        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
     fi
 
     # Set defaults build things
@@ -473,19 +490,20 @@ function build_addon() {
 
     # Start build
     run_build "$TARGET" "$repository" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}"
 }
 
 
 function build_generic() {
     local build_arch=$1
 
-    local build_from=""
-    local image=""
-    local repository=""
-    local raw_image=""
+    local build_from=
+    local image=
+    local repository=
+    local shadow_repository=
+    local raw_image=
     local version_tag=false
-    local args=""
+    local args=
     local docker_cli=()
     local docker_tags=()
 
@@ -496,6 +514,7 @@ function build_generic() {
         labels="$(jq --raw-output '.labels // empty | keys[]' "$TARGET/build.json")"
         raw_image="$(jq --raw-output '.image // empty' "$TARGET/build.json")"
         version_tag="$(jq --raw-output '.version_tag // false' "$TARGET/build.json")"
+        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
     fi
 
     # Set defaults build things
@@ -541,7 +560,7 @@ function build_generic() {
 
     # Start build
     run_build "$TARGET" "$repository" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}"
 }
 
 
