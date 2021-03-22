@@ -5,7 +5,7 @@
         "armv7": "homeassistant/armv7-base:3.13",
         "armhf": "homeassistant/armhf-base:3.13",
         "amd64": "homeassistant/amd64-base:3.13",
-        "i386": "homeassistant/ir86-base:3.13"
+        "i386": "homeassistant/i386-base:3.13"
     },
     "args": {
         "VCN_VERSION": "0.9.4"
