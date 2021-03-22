@@ -1,6 +1,6 @@
 #!/usr/bin/env bashio
 ######################
-# Hass.io Build-env
+# Home Assistant Build-env
 ######################
 set -e
 set +u
@@ -17,6 +17,8 @@ DOCKER_PUSH=true
 DOCKER_USER=
 DOCKER_PASSWORD=
 DOCKER_LOCAL=false
+VCN_NOTARY=false
+VCN_FROM=
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
 RELEASE_TAG=false
@@ -24,10 +26,10 @@ GIT_REPOSITORY=
 GIT_BRANCH="master"
 TARGET=
 VERSION=
+VERSION_BASE=
+VERSION_FROM=
 IMAGE=
 RELEASE=
-PYTHON=
-ALPINE=
 BUILD_LIST=()
 BUILD_TYPE="addon"
 BUILD_TASKS=()
@@ -80,6 +82,8 @@ Options:
         Additional version information like for base images.
     --release-tag
         Use this as main tag.
+    --version-from <VERSION>
+        Use this to set build_from tag if not specified.
 
   Architecture
     --armhf
@@ -123,22 +127,21 @@ Options:
         Default on. Run all things for an addon build.
     --generic <VERSION>
         Build based on the build.json
-    --builder-wheels <PYTHON_TAG>
-        Build the wheels builder for Home Assistant.
     --base <VERSION>
         Build our base images.
-    --base-python <VERSION=ALPINE>
-        Build our base python images.
-    --base-raspbian <VERSION>
-        Build our base raspbian images.
-    --base-ubuntu <VERSION>
-        Build our base ubuntu images.
-    --base-debian <VERSION>
-        Build our base debian images.
     --homeassisant-landingpage
         Build the landingpage for machines.
     --homeassistant-machine <VERSION=ALL,X,Y>
         Build the machine based image for a release.
+
+  Security:
+    --with-codenotary
+        Enable signing images with CodeNotary. Need set follow env:
+            VCN_USER
+            VCN_PASSWORD
+            VCN_NOTARIZATION_PASSWORD
+    --validate-from <ORG|signer>
+        Validate the FROM image which is used to build the image.
 EOF
 
     bashio::exit.nok
@@ -263,6 +266,9 @@ function run_build() {
         docker_cli+=("--build-arg" "BUILD_ARCH=$build_arch")
     fi
 
+    # Validate the base image
+    codenotary_validate "$build_from"
+
     # Build image
     bashio::log.info "Run build for $repository/$image:$version"
     docker build --pull -t "$repository/$image:$version" \
@@ -312,125 +318,87 @@ function run_build() {
             done
         done
     fi
+
+    # Singing image
+    codenotary_sign "${repository}/${image}:${version}"
 }
 
 
-#### HassIO functions ####
+#### Build functions ####
 
 function build_base_image() {
-    local build_arch=$1
+    local build_arch=${1}
 
     local build_from=""
-    local image="{arch}-base"
+    local image=""
+    local repository=""
+    local raw_image=""
+    local version_tag=false
+    local args=""
     local docker_cli=()
     local docker_tags=()
 
-    # Set type
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=alpine")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
-
-    # Start build
-    run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-function build_base_python_image() {
-    local build_arch=$1
-
-    local image="{arch}-base-python"
-    local build_from="homeassistant/${build_arch}-base:${ALPINE}"
-    local version="${VERSION}-alpine${ALPINE}"
-    local docker_cli=()
-    local docker_tags=()
-
-    # If latest python version/build
-    if [ "$RELEASE_TAG" == "true" ]; then
-        docker_tags=("$VERSION")
+    # Read build.json
+    if bashio::fs.file_exists "${TARGET}/build.json"; then
+        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "${TARGET}/build.json")"
+        args="$(jq --raw-output '.args // empty | keys[]' "${TARGET}/build.json")"
+        labels="$(jq --raw-output '.labels // empty | keys[]' "${TARGET}/build.json")"
+        raw_image="$(jq --raw-output '.image // empty' "${TARGET}/build.json")"
+        version_tag="$(jq --raw-output '.version_tag // false' "${TARGET}/build.json")"
     fi
 
-    # Set type
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=python")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
-
-    # Start build
-    run_build "$TARGET/$VERSION" "$DOCKER_HUB" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_base_ubuntu_image() {
-    local build_arch=$1
-
-    local build_from=""
-    local image="{arch}-base-ubuntu"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Select builder image
-    if [ "$build_arch" == "armhf" ]; then
-        bashio::log.error "$build_arch not supported for ubuntu"
+    # Set defaults build things
+    if ! bashio::var.has_value "${build_from}"; then
+        bashio::log.error "${build_arch} not supported for this build"
         return 1
     fi
 
-    # Set type
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=ubuntu")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
+    # Modify build_from
+    if [[ "${build_from}" =~ :$ ]]; then
+        if bashio::var.has_value "${VERSION_FROM}"; then
+            build_from="${build_from}:${VERSION_FROM}"
+        else
+            build_from="${build_from}:${VERSION_BASE}"
+        fi
+    fi
 
-    # Start build
-    run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_base_debian_image() {
-    local build_arch=$1
-
-    local build_from=""
-    local image="{arch}-base-debian"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Set type
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=debian")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
-
-    # Start build
-    run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_base_raspbian_image() {
-    local build_arch=$1
-
-    local build_from="$VERSION"
-    local image="{arch}-base-raspbian"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Select builder image
-    if [ "$build_arch" != "armhf" ]; then
-        bashio::log.error "$build_arch not supported for raspbian"
+    # Read data from image
+    if ! bashio::var.has_value "${raw_image}"; then
+        bashio::log.error "Can't find the image tag on build.json"
         return 1
+    fi
+    repository="$(echo "${raw_image}" | cut -f 1 -d '/')"
+    image="$(echo "${raw_image}" | cut -f 2 -d '/')"
+
+    # Additional build args
+    if bashio::var.has_value "${args}"; then
+        for arg in ${args}; do
+            value="$(jq --raw-output ".args.${arg}" "${TARGET}/build.json")"
+            docker_cli+=("--build-arg" "${arg}=${value}")
+        done
+    fi
+
+    # Additional build labels
+    if bashio::var.has_value "${labels}"; then
+        for label in ${labels}; do
+            value="$(jq --raw-output ".labels.\"${label}\"" "${TARGET}/build.json")"
+            docker_cli+=("--label" "${label}=${value}")
+        done
+    fi
+
+    # Tag with version/build
+    if bashio::var.true "${RELEASE_TAG}"; then
+        docker_tags=("${VERSION}")
     fi
 
     # Set type
     docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=raspbian")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
+    docker_cli+=("--label" "io.hass.base.version=${RELEASE}")
+    docker_cli+=("--label" "io.hass.base.image=${build_from}")
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
+    run_build "${TARGET}" "${repository}" "${image}" "${VERSION_BASE}" \
+        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@]
 }
 
 
@@ -624,36 +592,6 @@ function build_homeassistant_landingpage() {
 }
 
 
-function build_wheels() {
-    local build_arch=$1
-
-    local version=""
-    local image="{arch}-wheels"
-    local build_from="homeassistant/${build_arch}-base-python:${PYTHON}"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Read version
-    if [ "$VERSION" == "dev" ]; then
-        version="dev"
-    else
-        version="$(python3 "$TARGET/setup.py" -V)"
-    fi
-
-    # If latest python version/build
-    if [ "$RELEASE_TAG" == "true" ]; then
-        docker_tags=("$version")
-    fi
-
-    # Metadata
-    docker_cli+=("--label" "io.hass.type=wheels")
-
-    # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$version-${PYTHON}" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
 function extract_machine_build() {
     local list=$1
     local array=()
@@ -687,6 +625,59 @@ function init_crosscompile() {
     docker run --rm --privileged multiarch/qemu-user-static --reset -p yes \
         > /dev/null 2>&1 || bashio::log.warning "Can't enable crosscompiling feature"
 }
+
+#### Security CodeNotary ####
+
+function codenotary_probe() {
+    if ! bashio::var.has_value "${VCN_USER}" || ! bashio::var.has_value "${VCN_PASSWORD}" || ! bashio::var.has_value "${VCN_NOTARIZATION_PASSWORD}"; then
+        bashio::exit.nok "Missing ENV values for CodeNotary"
+    fi
+}
+
+
+function codenotary_setup() {
+    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
+        return 0
+    fi
+
+    vcn login /dev/null 2>&1 || bashio::exit.nok "Login to CodeNotary fails!"
+}
+
+function codenotary_sign() {
+    local image=$1
+
+    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
+        return 0
+    fi
+
+    vcn notarize --public "docker://${image}"
+}
+
+function codenotary_validate() {
+    local image=$1
+    local state=
+    local vcn_cli=()
+
+    if ! bashio::var.has_value "${VCN_FROM}"; then
+        return 0
+    fi
+
+    bashio::log.info "Download base image ${image} for CodeNotary validation"
+    docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
+
+    if [[ "${VCN_FROM}" =~ 0x.* ]]; then
+        vcn_cli+=("--signerID" "${VCN_FROM}")
+    else
+        vcn_cli+=("--org" "${VCN_FROM}")
+    fi
+
+    state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://{image}" | jq '.verification.status // 2')"
+    if [[ "${state}" != "0" ]]; then
+        bashio::exit.nok "Validation of base image fails!"
+    fi
+    bashio::log.info "Base imge ${image} is trusted"
+}
+
 
 #### Error handling ####
 
@@ -753,6 +744,10 @@ while [[ $# -gt 0 ]]; do
             DOCKER_HUB=$2
             shift
             ;;
+        --version-from)
+            VERSION_FROM=$2
+            shift
+            ;;
         --docker-hub-check)
             DOCKER_HUB_CHECK=true
             ;;
@@ -788,32 +783,7 @@ while [[ $# -gt 0 ]]; do
         --base)
             BUILD_TYPE="base"
             SELF_CACHE=true
-            VERSION=$2
-            shift
-            ;;
-        --base-python)
-            BUILD_TYPE="base-python"
-            SELF_CACHE=true
-            VERSION="$(echo "$2" | cut -d '=' -f 1)"
-            ALPINE="$(echo "$2" | cut -d '=' -f 2)"
-            shift
-            ;;
-        --base-ubuntu)
-            BUILD_TYPE="base-ubuntu"
-            SELF_CACHE=true
-            VERSION=$2
-            shift
-            ;;
-        --base-debian)
-            BUILD_TYPE="base-debian"
-            SELF_CACHE=true
-            VERSION=$2
-            shift
-            ;;
-        --base-raspbian)
-            BUILD_TYPE="base-raspbian"
-            SELF_CACHE=true
-            VERSION=$2
+            VERSION_BASE=$2
             shift
             ;;
         --generic)
@@ -836,13 +806,14 @@ while [[ $# -gt 0 ]]; do
             extract_machine_build "$(echo "$2" | cut -d '=' -f 2)"
             shift
             ;;
-        --builder-wheels)
-            BUILD_TYPE="builder-wheels"
-            PYTHON=$2
-            SELF_CACHE=true
+        --with-codenotary)
+            VCN_NOTARY=true
+            ;;
+        --validate-from)
+            codenotary_probe
+            VCN_FROM=$2
             shift
             ;;
-
         *)
             bashio::exit.nok "$0 : Argument '$1' unknown"
             ;;
@@ -856,7 +827,7 @@ if [ "${#BUILD_LIST[@]}" -eq 0 ] && ! [[ "$BUILD_TYPE" =~ ^homeassistant-(machin
 fi
 
 # Check other args
-if [ "$BUILD_TYPE" != "addon" ] && [ "$BUILD_TYPE" != "generic" ] && [ -z "$DOCKER_HUB" ]; then
+if [[ "$BUILD_TYPE" =~ (addon|generic|base) ]] && ! bashio::var.has_value "$DOCKER_HUB"; then
     bashio::exit.nok "Please set a docker hub!"
 fi
 
@@ -869,10 +840,11 @@ mkdir -p /data
 init_crosscompile
 start_docker
 
-# Login into dockerhub
+# Login into dockerhub & setup CodeNotary
 if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASSWORD" ]; then
   docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
 fi
+codenotary_setup
 
 # Load external repository
 if [ -n "$GIT_REPOSITORY" ]; then
@@ -891,16 +863,6 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_generic "$arch") &
         elif [ "$BUILD_TYPE" == "base" ]; then
             (build_base_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-python" ]; then
-            (build_base_python_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-ubuntu" ]; then
-            (build_base_ubuntu_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-debian" ]; then
-            (build_base_debian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
-            (build_base_raspbian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "builder-wheels" ]; then
-            (build_wheels "$arch") &
         elif [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
             continue  # Handled in the loop below
         else
