@@ -827,7 +827,7 @@ if [ "${#BUILD_LIST[@]}" -eq 0 ] && ! [[ "$BUILD_TYPE" =~ ^homeassistant-(machin
 fi
 
 # Check other args
-if [[ "$BUILD_TYPE" =~ (addon|generic|base) ]] && ! bashio::var.has_value "$DOCKER_HUB"; then
+if [[ ! "$BUILD_TYPE" =~ (addon|generic|base) ]] && ! bashio::var.has_value "$DOCKER_HUB"; then
     bashio::exit.nok "Please set a docker hub!"
 fi
 
