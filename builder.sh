@@ -827,7 +827,7 @@ if [ "${#BUILD_LIST[@]}" -eq 0 ] && ! [[ "$BUILD_TYPE" =~ ^homeassistant-(machin
 fi
 
 # Check other args
-if [ "$BUILD_TYPE" != "addon" ] && [ "$BUILD_TYPE" != "generic" ] && [ -z "$DOCKER_HUB" ]; then
+if [[ "$BUILD_TYPE" =~ (addon|generic|base) ]] && ! bashio::var.has_value "$DOCKER_HUB"; then
     bashio::exit.nok "Please set a docker hub!"
 fi
 
@@ -863,16 +863,6 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_generic "$arch") &
         elif [ "$BUILD_TYPE" == "base" ]; then
             (build_base_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-python" ]; then
-            (build_base_python_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-ubuntu" ]; then
-            (build_base_ubuntu_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-debian" ]; then
-            (build_base_debian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
-            (build_base_raspbian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "builder-wheels" ]; then
-            (build_wheels "$arch") &
         elif [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
             continue  # Handled in the loop below
         else
