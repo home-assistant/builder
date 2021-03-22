@@ -231,7 +231,7 @@ function run_build() {
     image="$(echo "${image}" | sed -r "s/\{arch\}/${build_arch}/g")"
 
     # Check if image exists on docker hub
-    if bashio::varl.true "$DOCKER_HUB_CHECK"; then
+    if bashio::var.true "$DOCKER_HUB_CHECK"; then
         metadata="$(curl -s "https://hub.docker.com/v2/repositories/${repository}/${image}/tags/${version}/")"
 
         if bashio::var.has_value "${metadata}" && [[ "$(echo "${metadata}" | jq --raw-output '.name')" == "${version}" ]]; then
