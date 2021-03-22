@@ -26,9 +26,10 @@ GIT_REPOSITORY=
 GIT_BRANCH="master"
 TARGET=
 VERSION=
+VERSION_BASE=
+VERSION_FROM=
 IMAGE=
 RELEASE=
-ALPINE=
 BUILD_LIST=()
 BUILD_TYPE="addon"
 BUILD_TASKS=()
@@ -81,6 +82,8 @@ Options:
         Additional version information like for base images.
     --release-tag
         Use this as main tag.
+    --version-from <VERSION>
+        Use this to set build_from tag if not specified.
 
   Architecture
     --armhf
@@ -126,14 +129,6 @@ Options:
         Build based on the build.json
     --base <VERSION>
         Build our base images.
-    --base-python <VERSION=ALPINE>
-        Build our base python images.
-    --base-raspbian <VERSION>
-        Build our base raspbian images.
-    --base-ubuntu <VERSION>
-        Build our base ubuntu images.
-    --base-debian <VERSION>
-        Build our base debian images.
     --homeassisant-landingpage
         Build the landingpage for machines.
     --homeassistant-machine <VERSION=ALL,X,Y>
@@ -329,122 +324,81 @@ function run_build() {
 }
 
 
-#### HassIO functions ####
+#### Build functions ####
 
 function build_base_image() {
-    local build_arch=$1
+    local build_arch=${1}
 
     local build_from=""
-    local image="{arch}-base"
+    local image=""
+    local repository=""
+    local raw_image=""
+    local version_tag=false
+    local args=""
     local docker_cli=()
     local docker_tags=()
 
-    # Set type
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=alpine")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
-
-    # Start build
-    run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-function build_base_python_image() {
-    local build_arch=$1
-
-    local image="{arch}-base-python"
-    local build_from="homeassistant/${build_arch}-base:${ALPINE}"
-    local version="${VERSION}-alpine${ALPINE}"
-    local docker_cli=()
-    local docker_tags=()
-
-    # If latest python version/build
-    if [ "$RELEASE_TAG" == "true" ]; then
-        docker_tags=("$VERSION")
+    # Read build.json
+    if bashio::fs.file_exists "${TARGET}/build.json"; then
+        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "${TARGET}/build.json")"
+        args="$(jq --raw-output '.args // empty | keys[]' "${TARGET}/build.json")"
+        labels="$(jq --raw-output '.labels // empty | keys[]' "${TARGET}/build.json")"
+        raw_image="$(jq --raw-output '.image // empty' "${TARGET}/build.json")"
+        version_tag="$(jq --raw-output '.version_tag // false' "${TARGET}/build.json")"
     fi
 
-    # Set type
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=python")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
-
-    # Start build
-    run_build "$TARGET/$VERSION" "$DOCKER_HUB" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_base_ubuntu_image() {
-    local build_arch=$1
-
-    local build_from=""
-    local image="{arch}-base-ubuntu"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Select builder image
-    if [ "$build_arch" == "armhf" ]; then
-        bashio::log.error "$build_arch not supported for ubuntu"
+    # Set defaults build things
+    if ! bashio::var.has_value "${build_from}"; then
+        bashio::log.error "${build_arch} not supported for this build"
         return 1
     fi
 
-    # Set type
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=ubuntu")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
+    # Modify build_from
+    if [[ "${build_from}" =~ :$ ]]; then
+        if bashio::var.has_value "${VERSION_FROM}"; then
+            build_from="${build_from}:${VERSION_FROM}"
+        else
+            build_from="${build_from}:${VERSION_BASE}"
+        fi
+    fi
 
-    # Start build
-    run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_base_debian_image() {
-    local build_arch=$1
-
-    local build_from=""
-    local image="{arch}-base-debian"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Set type
-    docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=debian")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
-
-    # Start build
-    run_build "$TARGET/$build_arch" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
-function build_base_raspbian_image() {
-    local build_arch=$1
-
-    local build_from="$VERSION"
-    local image="{arch}-base-raspbian"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Select builder image
-    if [ "$build_arch" != "armhf" ]; then
-        bashio::log.error "$build_arch not supported for raspbian"
+    # Read data from image
+    if ! bashio::var.has_value "${raw_image}"; then
+        bashio::log.error "Can't find the image tag on build.json"
         return 1
+    fi
+    repository="$(echo "${raw_image}" | cut -f 1 -d '/')"
+    image="$(echo "${raw_image}" | cut -f 2 -d '/')"
+
+    # Additional build args
+    if bashio::var.has_value "${args}"; then
+        for arg in ${args}; do
+            value="$(jq --raw-output ".args.${arg}" "${TARGET}/build.json")"
+            docker_cli+=("--build-arg" "${arg}=${value}")
+        done
+    fi
+
+    # Additional build labels
+    if bashio::var.has_value "${labels}"; then
+        for label in ${labels}; do
+            value="$(jq --raw-output ".labels.\"${label}\"" "${TARGET}/build.json")"
+            docker_cli+=("--label" "${label}=${value}")
+        done
+    fi
+
+    # Tag with version/build
+    if bashio::var.true "${RELEASE_TAG}"; then
+        docker_tags=("${VERSION}")
     fi
 
     # Set type
     docker_cli+=("--label" "io.hass.type=base")
-    docker_cli+=("--label" "io.hass.base.version=$RELEASE")
-    docker_cli+=("--label" "io.hass.base.name=raspbian")
-    docker_cli+=("--label" "io.hass.base.image=$DOCKER_HUB/$image")
+    docker_cli+=("--label" "io.hass.base.version=${RELEASE}")
+    docker_cli+=("--label" "io.hass.base.image=${build_from}")
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
+    run_build "${TARGET}" "${repository}" "${image}" "${VERSION_BASE}" \
+        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@]
 }
 
 
@@ -790,6 +744,10 @@ while [[ $# -gt 0 ]]; do
             DOCKER_HUB=$2
             shift
             ;;
+        --version-from)
+            VERSION_FROM=$2
+            shift
+            ;;
         --docker-hub-check)
             DOCKER_HUB_CHECK=true
             ;;
@@ -825,32 +783,7 @@ while [[ $# -gt 0 ]]; do
         --base)
             BUILD_TYPE="base"
             SELF_CACHE=true
-            VERSION=$2
-            shift
-            ;;
-        --base-python)
-            BUILD_TYPE="base-python"
-            SELF_CACHE=true
-            VERSION="$(echo "$2" | cut -d '=' -f 1)"
-            ALPINE="$(echo "$2" | cut -d '=' -f 2)"
-            shift
-            ;;
-        --base-ubuntu)
-            BUILD_TYPE="base-ubuntu"
-            SELF_CACHE=true
-            VERSION=$2
-            shift
-            ;;
-        --base-debian)
-            BUILD_TYPE="base-debian"
-            SELF_CACHE=true
-            VERSION=$2
-            shift
-            ;;
-        --base-raspbian)
-            BUILD_TYPE="base-raspbian"
-            SELF_CACHE=true
-            VERSION=$2
+            VERSION_BASE=$2
             shift
             ;;
         --generic)
@@ -894,7 +827,7 @@ if [ "${#BUILD_LIST[@]}" -eq 0 ] && ! [[ "$BUILD_TYPE" =~ ^homeassistant-(machin
 fi
 
 # Check other args
-if [ "$BUILD_TYPE" != "addon" ] && [ "$BUILD_TYPE" != "generic" ] && [ -z "$DOCKER_HUB" ]; then
+if [[ "$BUILD_TYPE" =~ (addon|generic|base) ]] && ! bashio::var.has_value "$DOCKER_HUB"; then
     bashio::exit.nok "Please set a docker hub!"
 fi
 
@@ -930,16 +863,6 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_generic "$arch") &
         elif [ "$BUILD_TYPE" == "base" ]; then
             (build_base_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-python" ]; then
-            (build_base_python_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-ubuntu" ]; then
-            (build_base_ubuntu_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-debian" ]; then
-            (build_base_debian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "base-raspbian" ]; then
-            (build_base_raspbian_image "$arch") &
-        elif [ "$BUILD_TYPE" == "builder-wheels" ]; then
-            (build_wheels "$arch") &
         elif [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
             continue  # Handled in the loop below
         else
