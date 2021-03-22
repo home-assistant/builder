@@ -125,8 +125,6 @@ Options:
         Default on. Run all things for an addon build.
     --generic <VERSION>
         Build based on the build.json
-    --builder-wheels <PYTHON_TAG>
-        Build the wheels builder for Home Assistant.
     --base <VERSION>
         Build our base images.
     --base-python <VERSION=ALPINE>
