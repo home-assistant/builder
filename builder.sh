@@ -641,36 +641,6 @@ function build_homeassistant_landingpage() {
 }
 
 
-function build_wheels() {
-    local build_arch=$1
-
-    local version=""
-    local image="{arch}-wheels"
-    local build_from="homeassistant/${build_arch}-base-python:${PYTHON}"
-    local docker_cli=()
-    local docker_tags=()
-
-    # Read version
-    if [ "$VERSION" == "dev" ]; then
-        version="dev"
-    else
-        version="$(python3 "$TARGET/setup.py" -V)"
-    fi
-
-    # If latest python version/build
-    if [ "$RELEASE_TAG" == "true" ]; then
-        docker_tags=("$version")
-    fi
-
-    # Metadata
-    docker_cli+=("--label" "io.hass.type=wheels")
-
-    # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$version-${PYTHON}" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
-}
-
-
 function extract_machine_build() {
     local list=$1
     local array=()
