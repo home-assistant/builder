@@ -3,14 +3,18 @@ FROM $BUILD_FROM
 
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV \
+    VCN_OTP_EMPTY=true \
+    LANG=C.UTF-8
 
 # Setup locals
 RUN apt-get update && apt-get install -y --no-install-recommends \
         jq \
         git \
+        curl \
         python3-setuptools \
+    && bash <(curl https://getvcn.codenotary.com -L) \
     && rm -rf /var/lib/apt/lists/* \
-ENV LANG C.UTF-8
 
 # Install docker
 # https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/
@@ -27,14 +31,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         docker-ce-cli \
         containerd.io \
     && rm -rf /var/lib/apt/lists/*
-
-# Setup arm binary support
-ARG BUILD_ARCH
-RUN if [ "$BUILD_ARCH" != "amd64" ]; then exit 0; else \
-    apt-get update && apt-get install -y --no-install-recommends \
-        qemu-user-static \
-        binfmt-support \
-    && rm -rf /var/lib/apt/lists/*; fi
 
 COPY builder.sh /usr/bin/
 

@@ -17,6 +17,8 @@ DOCKER_PUSH=true
 DOCKER_USER=
 DOCKER_PASSWORD=
 DOCKER_LOCAL=false
+VCN_NOTARY=false
+VCN_FROM=
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
 RELEASE_TAG=false
@@ -139,6 +141,15 @@ Options:
         Build the landingpage for machines.
     --homeassistant-machine <VERSION=ALL,X,Y>
         Build the machine based image for a release.
+
+  Security:
+    --with-codenotary
+        Enable signing images with CodeNotary. Need set follow env:
+            VCN_USER
+            VCN_PASSWORD
+            VCN_NOTARIZATION_PASSWORD
+    --validate-from <ORG|signer>
+        Validate the FROM image which is used to build the image.
 EOF
 
     bashio::exit.nok
@@ -263,6 +274,9 @@ function run_build() {
         docker_cli+=("--build-arg" "BUILD_ARCH=$build_arch")
     fi
 
+    # Validate the base image
+    codenotary_validate "$build_from"
+
     # Build image
     bashio::log.info "Run build for $repository/$image:$version"
     docker build --pull -t "$repository/$image:$version" \
@@ -312,6 +326,9 @@ function run_build() {
             done
         done
     fi
+
+    # Singing image
+    codenotary_sign "${repository}/${image}:${version}"
 }
 
 
@@ -688,6 +705,59 @@ function init_crosscompile() {
         > /dev/null 2>&1 || bashio::log.warning "Can't enable crosscompiling feature"
 }
 
+#### Security CodeNotary ####
+
+function codenotary_probe() {
+    if ! bashio::var.has_value "${VCN_USER}" || ! bashio::var.has_value "${VCN_PASSWORD}" || ! bashio::var.has_value "${VCN_NOTARIZATION_PASSWORD}"; then
+        bashio::exit.nok "Missing ENV values for CodeNotary"
+    fi
+}
+
+
+function codenotary_setup() {
+    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
+        return 0
+    fi
+
+    vcn login /dev/null 2>&1 || bashio::exit.nok "Login to CodeNotary fails!"
+}
+
+function codenotary_sign() {
+    local image=$1
+
+    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
+        return 0
+    fi
+
+    vcn notarize --public "docker://${image}"
+}
+
+function codenotary_validate() {
+    local image=$1
+    local state=
+    local vcn_cli=()
+
+    if ! bashio::var.has_value "${VCN_FROM}"; then
+        return 0
+    fi
+
+    bashio::log.info "Download base image ${image} for CodeNotary validation"
+    docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
+
+    if [[ "${VCN_FROM}" =~ 0x.* ]]; then
+        vcn_cli+=("--signerID" "${VCN_FROM}")
+    else
+        vcn_cli+=("--org" "${VCN_FROM}")
+    fi
+
+    state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://{image}" | jq '.verification.status // 2')"
+    if [[ "${state}" != "0" ]]; then
+        bashio::exit.nok "Validation of base image fails!"
+    fi
+    bashio::log.info "Base imge ${image} is trusted"
+}
+
+
 #### Error handling ####
 
 function error_handling() {
@@ -842,7 +912,14 @@ while [[ $# -gt 0 ]]; do
             SELF_CACHE=true
             shift
             ;;
-
+        --with-codenotary)
+            VCN_NOTARY=true
+            ;;
+        --validate-from)
+            codenotary_probe
+            VCN_FROM=$2
+            shift
+            ;;
         *)
             bashio::exit.nok "$0 : Argument '$1' unknown"
             ;;
@@ -869,10 +946,11 @@ mkdir -p /data
 init_crosscompile
 start_docker
 
-# Login into dockerhub
+# Login into dockerhub & setup CodeNotary
 if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASSWORD" ]; then
   docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
 fi
+codenotary_setup
 
 # Load external repository
 if [ -n "$GIT_REPOSITORY" ]; then
