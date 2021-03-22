@@ -28,7 +28,6 @@ TARGET=
 VERSION=
 IMAGE=
 RELEASE=
-PYTHON=
 ALPINE=
 BUILD_LIST=()
 BUILD_TYPE="addon"
@@ -872,12 +871,6 @@ while [[ $# -gt 0 ]]; do
             SELF_CACHE=true
             VERSION="$(echo "$2" | cut -d '=' -f 1)"
             extract_machine_build "$(echo "$2" | cut -d '=' -f 2)"
-            shift
-            ;;
-        --builder-wheels)
-            BUILD_TYPE="builder-wheels"
-            PYTHON=$2
-            SELF_CACHE=true
             shift
             ;;
         --with-codenotary)
