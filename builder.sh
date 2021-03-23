@@ -375,11 +375,12 @@ function build_base_image() {
     # Modify build_from
     if [[ "${build_from}" =~ :$ ]]; then
         if bashio::var.has_value "${VERSION_FROM}"; then
-            build_from="${build_from}:${VERSION_FROM}"
+            build_from="${build_from}${VERSION_FROM}"
         else
-            build_from="${build_from}:${VERSION_BASE}"
+            build_from="${build_from}${VERSION_BASE}"
         fi
     fi
+    bashio::log.info "Use BUILD_FROM: ${build_from}"
 
     # Read data from image
     if ! bashio::var.has_value "${raw_image}"; then
