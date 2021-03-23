@@ -19,6 +19,7 @@ DOCKER_PASSWORD=
 DOCKER_LOCAL=false
 VCN_NOTARY=false
 VCN_FROM=
+VCN_CACHE=
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
 RELEASE_TAG=false
@@ -142,6 +143,8 @@ Options:
             VCN_NOTARIZATION_PASSWORD
     --validate-from <ORG|signer>
         Validate the FROM image which is used to build the image.
+    --validate-cache <ORG|signer>
+        Validate the cache image which is used to build the image.
 EOF
 
     bashio::exit.nok
@@ -252,6 +255,8 @@ function run_build() {
 
         bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag}"
         if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1; then
+            # Validate the cache image
+            codenotary_validate "${VCN_CACHE}" "${repository}/${image}:${cache_tag}" "false"
             docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
         else
             docker_cli+=("--no-cache")
@@ -268,7 +273,7 @@ function run_build() {
     fi
 
     # Validate the base image
-    codenotary_validate "${build_from}"
+    codenotary_validate "${VCN_FROM}" "${build_from}" "true"
 
     # Build image
     bashio::log.info "Run build for ${repository}/${image}:${version}"
@@ -673,28 +678,32 @@ function codenotary_sign() {
 }
 
 function codenotary_validate() {
-    local image=$1
+    local trust=$1
+    local image=$2
+    local pull=$3
     local state=
     local vcn_cli=()
 
-    if ! bashio::var.has_value "${VCN_FROM}"; then
+    if ! bashio::var.has_value "${trust}"; then
         return 0
     fi
 
-    bashio::log.info "Download base image ${image} for CodeNotary validation"
-    docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
+    if bashio::var.true "${pull}"; then
+        bashio::log.info "Download image ${image} for CodeNotary validation"
+        docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
+    fi
 
-    if [[ "${VCN_FROM}" =~ 0x.* ]]; then
-        vcn_cli+=("--signerID" "${VCN_FROM}")
+    if [[ "${trust}" =~ 0x.* ]]; then
+        vcn_cli+=("--signerID" "${trust}")
     else
-        vcn_cli+=("--org" "${VCN_FROM}")
+        vcn_cli+=("--org" "${trust}")
     fi
 
-    state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://{image}" | jq '.verification.status // 2')"
+    state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://${image}" | jq '.verification.status // 2')"
     if [[ "${state}" != "0" ]]; then
-        bashio::exit.nok "Validation of base image fails!"
+        bashio::exit.nok "Validation of ${image} fails!"
     fi
-    bashio::log.info "Base imge ${image} is trusted"
+    bashio::log.info "Image ${image} is trusted"
 }
 
 
@@ -826,11 +835,15 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --with-codenotary)
+            codenotary_probe
             VCN_NOTARY=true
             ;;
         --validate-from)
-            codenotary_probe
             VCN_FROM=$2
+            shift
+            ;;
+        --validate-cache)
+            VCN_CACHE=$2
             shift
             ;;
         *)
