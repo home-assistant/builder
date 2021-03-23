@@ -20,6 +20,8 @@ DOCKER_LOCAL=false
 VCN_NOTARY=false
 VCN_FROM=
 VCN_CACHE=
+CODENOTARY_USER=
+CODENOTARY_PASSWORD=
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
 RELEASE_TAG=false
@@ -115,9 +117,9 @@ Options:
        Set or overwrite the docker repository.
     --docker-hub-check
        Check if the version already exists before starting the build.
-    --docker-user
+    --docker-user <USER>
        Username to login into docker with
-    --docker-password
+    --docker-password <PASSWORD>
        Password to login into docker with
 
     Use the host docker socket if mapped into container:
@@ -136,11 +138,8 @@ Options:
         Build the machine based image for a release.
 
   Security:
-    --with-codenotary
+    --with-codenotary <USER> <PASSWORD>
         Enable signing images with CodeNotary. Need set follow env:
-            VCN_USER
-            VCN_PASSWORD
-            VCN_NOTARIZATION_PASSWORD
     --validate-from <ORG|signer>
         Validate the FROM image which is used to build the image.
     --validate-cache <ORG|signer>
@@ -652,19 +651,12 @@ function init_crosscompile() {
 
 #### Security CodeNotary ####
 
-function codenotary_probe() {
-    if ! bashio::var.has_value "${VCN_USER}" || ! bashio::var.has_value "${VCN_PASSWORD}" || ! bashio::var.has_value "${VCN_NOTARIZATION_PASSWORD}"; then
-        bashio::exit.nok "Missing ENV values for CodeNotary"
-    fi
-}
-
-
 function codenotary_setup() {
     if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
         return 0
     fi
 
-    vcn login /dev/null 2>&1 || bashio::exit.nok "Login to CodeNotary fails!"
+    VCN_USER="${CODENOTARY_USER}" VCN_PASSWORD="${CODENOTARY_PASSWORD}" vcn login /dev/null 2>&1 || bashio::exit.nok "Login to CodeNotary fails!"
 }
 
 function codenotary_sign() {
@@ -674,7 +666,7 @@ function codenotary_sign() {
         return 0
     fi
 
-    vcn notarize --public "docker://${image}"
+    VCN_NOTARIZATION_PASSWORD="${CODENOTARY_PASSWORD}" vcn notarize --public "docker://${image}"
 }
 
 function codenotary_validate() {
@@ -837,6 +829,10 @@ while [[ $# -gt 0 ]]; do
         --with-codenotary)
             codenotary_probe
             VCN_NOTARY=true
+            CODENOTARY_USER=$2
+            shift
+            CODENOTARY_PASSWORD=$2
+            shift
             ;;
         --validate-from)
             VCN_FROM=$2
