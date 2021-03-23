@@ -827,7 +827,6 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --with-codenotary)
-            codenotary_probe
             VCN_NOTARY=true
             CODENOTARY_USER=$2
             shift
