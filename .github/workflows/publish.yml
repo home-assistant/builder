@@ -60,5 +60,5 @@ jobs:
           --${{ matrix.architecture }} \
           --target /data \
           --with-codenotary "${{ secrets.VCN_USER }}" "${{ secrets.VCN_PASSWORD }}" "${{ secrets.VCN_ORG }}" \
-          --verify-from "${{ secrets.VCN_ORG }}" \
+          --validate-from "${{ secrets.VCN_ORG }}" \
           --generic $GIT_TAG_NAME
