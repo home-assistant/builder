@@ -18,12 +18,21 @@ runs:
         echo "::set-output name=version::${input}"
 
     - shell: bash
-      run: docker pull homeassistant/amd64-builder:${{ steps.version.outputs.version }}
+      run: docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
+    
+    - shell: bash
+      run: |
+        bash <(curl https://getvcn.codenotary.com -L)
+        state="$(vcn authenticate --org home-assistant.io --output json docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} | jq '.verification.status // 2')"
+        if [[ "${state}" != "0" ]]; then
+          echo "Invalid signature!"
+          exit 1
+        fi
 
     - shell: bash
       id: builder
       run: |
-        builder=$(docker images homeassistant/amd64-builder:${{ steps.version.outputs.version }} -q)
+        builder=$(docker images ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} -q)
         echo "::set-output name=id::$builder"
 
     - shell: bash
@@ -33,7 +42,7 @@ runs:
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
             -v ~/.docker:/root/.docker \
             -v ${{ github.workspace }}:/data \
-            homeassistant/amd64-builder:${{ steps.version.outputs.version }} \
+            ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} \
             ${{ inputs.args }}
 
     - shell: bash
