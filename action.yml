@@ -23,7 +23,7 @@ runs:
     - shell: bash
       run: |
         bash <(curl https://getvcn.codenotary.com -L)
-        state="$(vcn authenticate --org home-assistant.io --output json docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} | jq '.verification.status // 0')"
+        state="$(vcn authenticate --org home-assistant.io --output json docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} | jq '.verification.status // 2')"
         if [[ "${state}" != "0" ]]; then
           echo "Invalid signature!"
           exit 1
