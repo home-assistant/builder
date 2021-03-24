@@ -22,6 +22,7 @@ VCN_FROM=
 VCN_CACHE=
 CODENOTARY_USER=
 CODENOTARY_PASSWORD=
+CODENOTARY_OWNER=
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
 RELEASE_TAG=false
@@ -138,7 +139,7 @@ Options:
         Build the machine based image for a release.
 
   Security:
-    --with-codenotary <USER> <PASSWORD>
+    --with-codenotary <USER> <PASSWORD> <OWNER>
         Enable signing images with CodeNotary. Need set follow env:
     --validate-from <ORG|signer>
         Validate the FROM image which is used to build the image.
@@ -337,7 +338,7 @@ function run_build() {
     fi
 
     # Singing image
-    codenotary_sign "${repository}/${image}:${version}"
+    codenotary_sign "${CODENOTARY_OWNER}" "${repository}/${image}:${version}"
 }
 
 
@@ -661,13 +662,26 @@ function codenotary_setup() {
 }
 
 function codenotary_sign() {
-    local image=$1
+    local trust=$1
+    local image=$2
+    local state=
+    local vcn_cli=()
 
     if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
         return 0
     fi
 
-    VCN_NOTARIZATION_PASSWORD="${CODENOTARY_PASSWORD}" vcn notarize --public "docker://${image}"
+    if [[ "${trust}" =~ ^0x ]]; then
+        vcn_cli+=("--signerID" "${trust}")
+    else
+        vcn_cli+=("--org" "${trust}")
+    fi
+    
+    state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://${image}" | jq '.verification.status // 2')"
+    if [[ "${state}" != "0" ]]; then
+        VCN_NOTARIZATION_PASSWORD="${CODENOTARY_PASSWORD}" vcn notarize --public "docker://${image}" || bashio::exit.nok "Failed to sign the image"
+    fi
+    bashio::log.info "Signed ${image} with ${trust}"
 }
 
 function codenotary_validate() {
@@ -686,7 +700,7 @@ function codenotary_validate() {
         docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
     fi
 
-    if [[ "${trust}" =~ 0x.* ]]; then
+    if [[ "${trust}" =~ ^0x ]]; then
         vcn_cli+=("--signerID" "${trust}")
     else
         vcn_cli+=("--org" "${trust}")
@@ -832,6 +846,8 @@ while [[ $# -gt 0 ]]; do
             CODENOTARY_USER=$2
             shift
             CODENOTARY_PASSWORD=$2
+            shift
+            CODENOTARY_OWNER=$2
             shift
             ;;
         --validate-from)
