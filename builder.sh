@@ -133,10 +133,8 @@ Options:
         Build based on the build.json
     --base <VERSION>
         Build our base images.
-    --homeassisant-landingpage
-        Build the landingpage for machines.
-    --homeassistant-machine <VERSION=ALL,X,Y>
-        Build the machine based image for a release.
+    --machine <VERSION=ALL,X,Y>
+        Build the machine based image for a release/landingpage.
 
   Security:
     --with-codenotary <USER> <PASSWORD> <OWNER>
@@ -440,7 +438,7 @@ function build_addon() {
     local docker_tags=()
 
     # Read addon build.json
-    if [ -f "$TARGET/build.json" ]; then
+    if bashio::fs.file_exists "$TARGET/build.json"; then
         build_from="$(jq --raw-output ".build_from.$build_arch // empty" "$TARGET/build.json")"
         args="$(jq --raw-output '.args // empty | keys[]' "$TARGET/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
@@ -514,7 +512,7 @@ function build_generic() {
     local docker_tags=()
 
     # Read build.json
-    if [ -f "$TARGET/build.json" ]; then
+    if bashio::fs.file_exists "$TARGET/build.json"; then
         build_from="$(jq --raw-output ".build_from.$build_arch // empty" "$TARGET/build.json")"
         args="$(jq --raw-output '.args // empty | keys[]' "$TARGET/build.json")"
         labels="$(jq --raw-output '.labels // empty | keys[]' "$TARGET/build.json")"
@@ -524,13 +522,13 @@ function build_generic() {
     fi
 
     # Set defaults build things
-    if [ -z "$build_from" ]; then
+    if ! bashio::var.has_value "$build_from"; then
         bashio::log.error "$build_arch not supported for this build"
         return 1
     fi
 
     # Read data from image
-    if [ -z "$raw_image" ]; then
+    if ! bashio::var.has_value "$raw_image"; then
         bashio::log.error "Can't find the image tag on build.json"
         return 1
     fi
@@ -538,7 +536,7 @@ function build_generic() {
     image="$(echo "$raw_image" | cut -f 2 -d '/')"
 
     # Additional build args
-    if [ -n "$args" ]; then
+    if bashio::var.has_value "$args"; then
         for arg in $args; do
             value="$(jq --raw-output ".args.$arg" "$TARGET/build.json")"
             docker_cli+=("--build-arg" "$arg=$value")
@@ -546,7 +544,7 @@ function build_generic() {
     fi
 
     # Additional build labels
-    if [ -n "$labels" ]; then
+    if bashio::var.has_value "$labels"; then
         for label in $labels; do
             value="$(jq --raw-output ".labels.\"$label\"" "$TARGET/build.json")"
             docker_cli+=("--label" "$label=$value")
@@ -554,7 +552,7 @@ function build_generic() {
     fi
 
     # Version Tag
-    if [ "$version_tag" == "true" ]; then
+    if bashio::var.true "$version_tag"; then
         if [[ "$VERSION" =~ d ]]; then
             docker_tags+=("dev")
         elif [[ "$VERSION" =~ b ]]; then
@@ -570,50 +568,81 @@ function build_generic() {
 }
 
 
-function build_homeassistant_machine() {
-    local build_machine=$1
-
-    local image="${build_machine}-homeassistant"
-    local dockerfile="$TARGET/$build_machine"
-    local build_from=""
-    local docker_cli=()
-    local docker_tags=()
-
-    # Set labels
-    docker_cli+=("--label" "io.hass.machine=$build_machine")
-    docker_cli+=("--file" "$dockerfile")
-
-    # Add additional tag
-    if [[ "$VERSION" =~ d ]]; then
-        docker_tags+=("dev")
-    elif [[ "$VERSION" =~ b ]]; then
-        docker_tags+=("beta")
-    else
-        docker_tags+=("stable")
-    fi
-
-    # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "" docker_cli[@] docker_tags[@]
-}
-
-
-function build_homeassistant_landingpage() {
+function build_machine() {
     local build_machine=$1
     local build_arch=$2
 
-    local image="${build_machine}-homeassistant"
-    local build_from="homeassistant/${build_arch}-base:latest"
+    local args=
+    local image=
+    local repository=
+    local raw_image=
+    local build_from=
+    local shadow_repository=
+    local version_tag=false
     local docker_cli=()
     local docker_tags=()
 
+    # Read build.json
+    if bashio::fs.file_exists "${TARGET}/build.json"; then
+        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "${TARGET}/build.json")"
+        args="$(jq --raw-output '.args // empty | keys[]' "${TARGET}/build.json")"
+        labels="$(jq --raw-output '.labels // empty | keys[]' "${TARGET}/build.json")"
+        raw_image="$(jq --raw-output '.image // empty' "${TARGET}/build.json")"
+        version_tag="$(jq --raw-output '.version_tag // false' "${TARGET}/build.json")"
+        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
+    fi
+
+    # Modify build_from
+    if [[ "${build_from}" =~ :$ ]]; then
+        build_from="${build_from}${VERSION}"
+    fi
+    bashio::log.info "Use BUILD_FROM: ${build_from}"
+
+    # Change dockerfile
+    if bashio::fs.file_exists "${TARGET}/${build_machine}"; then
+        docker_cli+=("--file" "${TARGET}/${build_machine}")
+    fi
+
+    repository="$(echo "${raw_image}" | cut -f 1 -d '/')"
+    image="$(echo "${raw_image}" | cut -f 2 -d '/')"
+
+    # Replace {machine} with build machine for image
+    # shellcheck disable=SC1117
+    image="$(echo "${image}" | sed -r "s/\{machine\}/${build_machine}/g")"
+
+    # Additional build args
+    if bashio::var.has_value "${args}"; then
+        for arg in ${args}; do
+            value="$(jq --raw-output ".args.${arg}" "${TARGET}/build.json")"
+            docker_cli+=("--build-arg" "${arg}=${value}")
+        done
+    fi
+
+    # Additional build labels
+    if bashio::var.has_value "${labels}"; then
+        for label in ${labels}; do
+            value="$(jq --raw-output ".labels.\"${label}\"" "${TARGET}/build.json")"
+            docker_cli+=("--label" "${label}=${value}")
+        done
+    fi
+
     # Set labels
-    docker_cli+=("--label" "io.hass.machine=$build_machine")
-    docker_cli+=("--label" "io.hass.type=landingpage")
+    docker_cli+=("--label" "io.hass.machine=${build_machine}")
+
+    # Version Tag
+    if bashio::var.true "${version_tag}"; then
+        if [[ "${VERSION}" =~ d ]]; then
+            docker_tags+=("dev")
+        elif [[ "${VERSION}" =~ b ]]; then
+            docker_tags+=("beta")
+        else
+            docker_tags+=("stable")
+        fi
+    fi
 
     # Start build
-    run_build "$TARGET" "$DOCKER_HUB" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@]
+    run_build "${TARGET}" "${repository}" "${image}" "${VERSION}" \
+        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}"
 }
 
 
@@ -826,16 +855,8 @@ while [[ $# -gt 0 ]]; do
             VERSION=$2
             shift
             ;;
-        --homeassistant-landingpage)
-            BUILD_TYPE="homeassistant-landingpage"
-            SELF_CACHE=true
-            DOCKER_LATEST=false
-            VERSION="landingpage"
-            extract_machine_build "$2"
-            shift
-            ;;
-        --homeassistant-machine)
-            BUILD_TYPE="homeassistant-machine"
+        --machine)
+            BUILD_TYPE="machine"
             SELF_CACHE=true
             VERSION="$(echo "$2" | cut -d '=' -f 1)"
             extract_machine_build "$(echo "$2" | cut -d '=' -f 2)"
@@ -866,13 +887,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check if an architecture is available
-if [ "${#BUILD_LIST[@]}" -eq 0 ] && ! [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
+if [[ "${#BUILD_LIST[@]}" -eq 0 && ! "$BUILD_TYPE" == "machine" ]]; then
     bashio::exit.nok "You need select an architecture for build!"
-fi
-
-# Check other args
-if [[ ! "$BUILD_TYPE" =~ (addon|generic|base) ]] && ! bashio::var.has_value "$DOCKER_HUB"; then
-    bashio::exit.nok "Please set a docker hub!"
 fi
 
 
@@ -907,7 +923,7 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
             (build_generic "$arch") &
         elif [ "$BUILD_TYPE" == "base" ]; then
             (build_base_image "$arch") &
-        elif [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
+        elif [[ "$BUILD_TYPE" == "machine" ]]; then
             continue  # Handled in the loop below
         else
             bashio::exit.nok "Invalid build type: $BUILD_TYPE"
@@ -917,15 +933,11 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
 fi
 
 # Select machine build
-if [[ "$BUILD_TYPE" =~ ^homeassistant-(machine|landingpage)$ ]]; then
+if [[ "$BUILD_TYPE" == "machine" ]]; then
     bashio::log.info "Machine builds: ${!BUILD_MACHINE[*]}"
     for machine in "${!BUILD_MACHINE[@]}"; do
         machine_arch="${BUILD_MACHINE["$machine"]}"
-        if [ "$BUILD_TYPE" == "homeassistant-machine" ]; then
-            (build_homeassistant_machine "$machine") &
-        elif [ "$BUILD_TYPE" == "homeassistant-landingpage" ]; then
-            (build_homeassistant_landingpage "$machine" "$machine_arch") &
-        fi
+        (build_machine "$machine" "$machine_arch") &
         BUILD_TASKS+=($!)
     done
 fi
