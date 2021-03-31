@@ -342,7 +342,7 @@ function run_build() {
 
 #### Build functions ####
 
-function build_base_image() {
+function build_base() {
     local build_arch=${1}
 
     local build_from=
@@ -922,7 +922,7 @@ if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
         elif [ "$BUILD_TYPE" == "generic" ]; then
             (build_generic "$arch") &
         elif [ "$BUILD_TYPE" == "base" ]; then
-            (build_base_image "$arch") &
+            (build_base "$arch") &
         elif [[ "$BUILD_TYPE" == "machine" ]]; then
             continue  # Handled in the loop below
         else
