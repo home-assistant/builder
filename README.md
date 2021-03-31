@@ -132,10 +132,8 @@ jobs:
         Build based on the build.json
     --base <VERSION>
         Build our base images.
-    --homeassisant-landingpage
-        Build the landingpage for machines.
-    --homeassistant-machine <VERSION=ALL,X,Y>
-        Build the machine based image for a release.
+    --machine <VERSION=ALL,X,Y>
+        Build the machine based image for a release/landingpage.
   
   Security:
     --with-codenotary <USER> <PASSWORD> <OWNER>
