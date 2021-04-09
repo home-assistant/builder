@@ -12,6 +12,7 @@
         "VCN_VERSION": "0.9.4"
     },
     "labels": {
-        "io.hass.type": "builder"
+        "io.hass.type": "builder",
+        "org.opencontainers.image.source": "https://github.com/home-assistant/builder"
     }
 }
