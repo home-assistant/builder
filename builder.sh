@@ -747,8 +747,6 @@ function codenotary_validate() {
 
 function error_handling() {
     stop_docker
-    clean_crosscompile
-
     bashio::exit.nok "Abort by User"
 }
 trap 'error_handling' SIGINT SIGTERM
