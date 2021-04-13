@@ -264,11 +264,11 @@ function run_build() {
         docker_cli+=("--no-cache")
     fi
 
-    # do we know the arch of build?
-    if bashio::var.has_value "${build_arch}"; then
-        docker_cli+=("--label" "io.hass.arch=${build_arch}")
-        docker_cli+=("--build-arg" "BUILD_ARCH=${build_arch}")
-    fi
+    # Set Labels
+    docker_cli+=("--label" "io.hass.arch=${build_arch}")
+    docker_cli+=("--label" "io.hass.version=${version}")
+    docker_cli+=("--label" "org.opencontainers.image.version=${version}")
+    docker_cli+=("--label" "org.opencontainers.image.created=$(date --rfc-3339=seconds --utc)")
 
     # Validate the base image
     codenotary_validate "${VCN_FROM}" "${build_from}" "true"
@@ -276,9 +276,9 @@ function run_build() {
     # Build image
     bashio::log.info "Run build for ${repository}/${image}:${version}"
     docker build --pull -t "${repository}/${image}:${version}" \
-        --label "io.hass.version=${version}" \
         --build-arg "BUILD_FROM=${build_from}" \
         --build-arg "BUILD_VERSION=${version}" \
+	--build-arg "BUILD_ARCH=${build_arch}" \
         "${docker_cli[@]}" \
         "${build_dir}"
 
