@@ -278,7 +278,7 @@ function run_build() {
     docker build --pull -t "${repository}/${image}:${version}" \
         --build-arg "BUILD_FROM=${build_from}" \
         --build-arg "BUILD_VERSION=${version}" \
-	--build-arg "BUILD_ARCH=${build_arch}" \
+        --build-arg "BUILD_ARCH=${build_arch}" \
         "${docker_cli[@]}" \
         "${build_dir}"
 
