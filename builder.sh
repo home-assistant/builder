@@ -268,7 +268,7 @@ function run_build() {
     docker_cli+=("--label" "io.hass.arch=${build_arch}")
     docker_cli+=("--label" "io.hass.version=${version}")
     docker_cli+=("--label" "org.opencontainers.image.version=${version}")
-    docker_cli+=("--label" "org.opencontainers.image.created=$(date --rfc-3339=seconds --utc)")
+    docker_cli+=("--label" "org.opencontainers.image.created=\"$(date --rfc-3339=seconds --utc)\"")
 
     # Validate the base image
     codenotary_validate "${VCN_FROM}" "${build_from}" "true"
