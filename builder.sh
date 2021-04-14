@@ -226,6 +226,7 @@ function run_build() {
     # Overwrites
     if bashio::var.has_value "${DOCKER_HUB}"; then repository="${DOCKER_HUB}"; fi
     if bashio::var.has_value "${IMAGE}"; then image="${IMAGE}"; fi
+    if ! bashio::var.has_value "${RELEASE}"; then RELEASE="${version}"; fi
 
     # Replace {arch} with build arch for image
     # shellcheck disable=SC1117
@@ -266,9 +267,9 @@ function run_build() {
 
     # Set Labels
     docker_cli+=("--label" "io.hass.arch=${build_arch}")
-    docker_cli+=("--label" "io.hass.version=${version}")
-    docker_cli+=("--label" "org.opencontainers.image.version=${version}")
     docker_cli+=("--label" "org.opencontainers.image.created=$(date --rfc-3339=seconds --utc)")
+    docker_cli+=("--label" "io.hass.version=${RELEASE}")
+    docker_cli+=("--label" "org.opencontainers.image.version=${RELEASE}")
 
     # Validate the base image
     codenotary_validate "${VCN_FROM}" "${build_from}" "true"
@@ -413,6 +414,7 @@ function build_base() {
     # Set type
     docker_cli+=("--label" "io.hass.type=base")
     docker_cli+=("--label" "io.hass.base.version=${RELEASE}")
+    docker_cli+=("--label" "io.hass.base.arch=${build_arch}")
     docker_cli+=("--label" "io.hass.base.image=${build_from}")
 
     # Start build
