@@ -222,11 +222,12 @@ function run_build() {
     local push_images=()
     local cache_tag="latest"
     local metadata
+    local release="${version}"
 
     # Overwrites
     if bashio::var.has_value "${DOCKER_HUB}"; then repository="${DOCKER_HUB}"; fi
     if bashio::var.has_value "${IMAGE}"; then image="${IMAGE}"; fi
-    if ! bashio::var.has_value "${RELEASE}"; then RELEASE="${version}"; fi
+    if bashio::var.has_value "${RELEASE}"; then release="${RELEASE}"; fi
 
     # Replace {arch} with build arch for image
     # shellcheck disable=SC1117
@@ -268,8 +269,8 @@ function run_build() {
     # Set Labels
     docker_cli+=("--label" "io.hass.arch=${build_arch}")
     docker_cli+=("--label" "org.opencontainers.image.created=$(date --rfc-3339=seconds --utc)")
-    docker_cli+=("--label" "io.hass.version=${RELEASE}")
-    docker_cli+=("--label" "org.opencontainers.image.version=${RELEASE}")
+    docker_cli+=("--label" "io.hass.version=${release}")
+    docker_cli+=("--label" "org.opencontainers.image.version=${release}")
 
     # Validate the base image
     codenotary_validate "${VCN_FROM}" "${build_from}" "true"
