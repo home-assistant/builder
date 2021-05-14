@@ -1,4 +1,4 @@
-name: 'Publish'
+name: "Publish"
 
 on:
   release:
@@ -17,12 +17,12 @@ jobs:
     outputs:
       architectures: ${{ steps.info.outputs.architectures }}
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v2.3.4
+      - name: Checkout the repository
+        uses: actions/checkout@v2.3.4
 
-    - name: Get information
-      id: info
-      uses: home-assistant/actions/helpers/info@master
+      - name: Get information
+        id: info
+        uses: home-assistant/actions/helpers/info@master
 
   publish:
     name: Publish builder
@@ -33,34 +33,32 @@ jobs:
       matrix:
         architecture: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v2.3.4
+      - name: Checkout the repository
+        uses: actions/checkout@v2.3.4
 
-    - uses: olegtarasov/get-tag@v2.1
-      if: github.event_name == 'release'
-      name: Set tag envronment variable
+      - uses: olegtarasov/get-tag@v2.1
+        if: github.event_name == 'release'
+        name: Set tag envronment variable
 
-    - name: Login to DockerHub
-      uses: docker/login-action@v1.9.0
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to DockerHub
+        uses: docker/login-action@v1.9.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v1.9.0
-      with:
-        registry: ghcr.io
-        username: ${{ secrets.GIT_USER }}
-        password: ${{ secrets.GIT_TOKEN }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1.9.0
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GIT_USER }}
+          password: ${{ secrets.GIT_TOKEN }}
 
-    - name: Publish ${{ matrix.architecture }} builder
-      uses: home-assistant/builder@master
-      with:
-        args: |
-          --${{ matrix.architecture }} \
-          --target /data \
-          --with-codenotary "${{ secrets.VCN_USER }}" "${{ secrets.VCN_PASSWORD }}" "${{ secrets.VCN_ORG }}" \
-          --validate-from "${{ secrets.VCN_ORG }}" \
-          --validate-cache "${{ secrets.VCN_ORG }}" \
-          --generic $GIT_TAG_NAME
-
+      - name: Publish ${{ matrix.architecture }} builder
+        uses: ./
+        with:
+          args: |
+            --${{ matrix.architecture }} \
+            --target /data \
+            --with-codenotary "${{ secrets.VCN_USER }}" "${{ secrets.VCN_PASSWORD }}" "${{ secrets.VCN_ORG }}" \
+            --validate-from "${{ secrets.VCN_ORG }}" \
+            --generic $GIT_TAG_NAME

@@ -19,7 +19,6 @@ DOCKER_PASSWORD=
 DOCKER_LOCAL=false
 VCN_NOTARY=false
 VCN_FROM=
-VCN_CACHE=
 CODENOTARY_USER=
 CODENOTARY_PASSWORD=
 CODENOTARY_OWNER=
@@ -141,8 +140,6 @@ Options:
         Enable signing images with CodeNotary. Need set follow env:
     --validate-from <ORG|signer>
         Validate the FROM image which is used to build the image.
-    --validate-cache <ORG|signer>
-        Validate the cache image which is used to build the image.
 EOF
 
     bashio::exit.nok
@@ -254,9 +251,7 @@ function run_build() {
         fi
 
         bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag}"
-        if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1; then
-            # Validate the cache image
-            codenotary_validate "${VCN_CACHE}" "${repository}/${image}:${cache_tag}" "false"
+        if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 && codenotary_validate "${CODENOTARY_OWNER}" "${repository}/${image}:${cache_tag}" "false"; then
             docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
         else
             docker_cli+=("--no-cache")
@@ -273,7 +268,9 @@ function run_build() {
     docker_cli+=("--label" "org.opencontainers.image.version=${release}")
 
     # Validate the base image
-    codenotary_validate "${VCN_FROM}" "${build_from}" "true"
+    if ! codenotary_validate "${VCN_FROM}" "${build_from}" "true"; then
+        bashio::exit.nok "Invalid base image ${build_from}"
+    fi
 
     # Build image
     bashio::log.info "Run build for ${repository}/${image}:${version}"
@@ -740,8 +737,10 @@ function codenotary_validate() {
 
     state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://${image}" | jq '.verification.status // 2')"
     if [[ "${state}" != "0" ]]; then
-        bashio::exit.nok "Validation of ${image} fails!"
+        bashio::log.warning "Validation of ${image} fails!"
+        return 1
     fi
+
     bashio::log.info "Image ${image} is trusted"
 }
 
@@ -874,10 +873,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --validate-from)
             VCN_FROM=$2
-            shift
-            ;;
-        --validate-cache)
-            VCN_CACHE=$2
             shift
             ;;
         *)
