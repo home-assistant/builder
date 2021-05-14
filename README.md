@@ -11,7 +11,7 @@ Use the `with.args` key to pass in arguments to the builder, to see what argumen
 ### Test action example
 
 ```yaml
-name: 'Test'
+name: "Test"
 
 on: [push, pull_request]
 
@@ -20,22 +20,22 @@ jobs:
     name: Test build
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v2
-    - name: Test build
-      uses: home-assistant/builder@master
-      with:
-        args: |
-          --test \
-          --all \
-          --target addon-folder \
-          --docker-hub user-name-or-space-name
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - name: Test build
+        uses: home-assistant/builder@master
+        with:
+          args: |
+            --test \
+            --all \
+            --target addon-folder \
+            --docker-hub user-name-or-space-name
 ```
 
 ### Publish action example
 
 ```yaml
-name: 'Publish'
+name: "Publish"
 
 on:
   release:
@@ -46,20 +46,20 @@ jobs:
     name: Publish
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v2
-    - name: Login to DockerHub
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Publish
-      uses: home-assistant/builder@master
-      with:
-        args: |
-          --all \
-          --target addon-folder \
-          --docker-hub user-name-or-space-name
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish
+        uses: home-assistant/builder@master
+        with:
+          args: |
+            --all \
+            --target addon-folder \
+            --docker-hub user-name-or-space-name
 ```
 
 ## Arguments
@@ -68,7 +68,7 @@ jobs:
   Options:
     -h, --help
         Display this help and exit.
-  
+
   Repository / Data
     -r, --repository <REPOSITORY>
         Set git repository to load data from.
@@ -76,7 +76,7 @@ jobs:
         Set git branch for repository.
     -t, --target <PATH_TO_BUILD>
         Set local folder or path inside repository for build.
-  
+
   Version/Image handling
     -v, --version <VERSION>
         Overwrite version/tag of build.
@@ -88,7 +88,7 @@ jobs:
         Use this as main tag.
     --version-from <VERSION>
         Use this to set build_from tag if not specified.
-  
+
   Architecture
     --armhf
         Build for arm v6.
@@ -102,7 +102,7 @@ jobs:
         Build for intel/amd 32bit.
     --all
         Build all architecture.
-  
+
   Build handling
     --test
        Disable push to dockerhub.
@@ -124,7 +124,7 @@ jobs:
        Password to login into docker with
     Use the host docker socket if mapped into container:
        /var/run/docker.sock
-  
+
   Internals:
     --addon
         Default on. Run all things for an addon build.
@@ -134,12 +134,10 @@ jobs:
         Build our base images.
     --machine <VERSION=ALL,X,Y>
         Build the machine based image for a release/landingpage.
-  
+
   Security:
     --with-codenotary <USER> <PASSWORD> <OWNER>
         Enable signing images with CodeNotary. Need set follow env:
-    --validate-from <ORG|signer>
-        Validate the FROM image which is used to build the image.
     --validate-cache <ORG|signer>
         Validate the cache image which is used to build the image.
 ```
@@ -147,16 +145,19 @@ jobs:
 ## Local installation
 
 amd64:
+
 ```bash
 docker pull homeassistant/amd64-builder
 ```
 
 armv7/armhf:
+
 ```bash
 docker pull homeassistant/armv7-builder
 ```
 
 aarch64:
+
 ```bash
 docker pull homeassistant/aarch64-builder
 ```
