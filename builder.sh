@@ -251,11 +251,8 @@ function run_build() {
         fi
 
         bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag}"
-        if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1; then
-            # Validate the cache image
-            if codenotary_validate "${CODENOTARY_OWNER}" "${repository}/${image}:${cache_tag}" "false"; then
-                docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
-            fi
+        if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 && codenotary_validate "${CODENOTARY_OWNER}" "${repository}/${image}:${cache_tag}" "false"; then
+            docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
         else
             docker_cli+=("--no-cache")
             bashio::log.warning "No cache image found. Disabling cache for this build."
@@ -740,7 +737,7 @@ function codenotary_validate() {
 
     state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://${image}" | jq '.verification.status // 2')"
     if [[ "${state}" != "0" ]]; then
-        bashio::log.warn "Validation of ${image} fails!"
+        bashio::log.warning "Validation of ${image} fails!"
         return 1
     fi
 
