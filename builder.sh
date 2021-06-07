@@ -693,7 +693,6 @@ function codenotary_setup() {
 function codenotary_sign() {
     local trust=$1
     local image=$2
-    local state=
     local vcn_cli=()
 
     if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
@@ -716,7 +715,6 @@ function codenotary_validate() {
     local trust=$1
     local image=$2
     local pull=$3
-    local state=
     local vcn_cli=()
 
     if ! bashio::var.has_value "${trust}"; then
@@ -734,8 +732,7 @@ function codenotary_validate() {
         vcn_cli+=("--org" "${trust}")
     fi
 
-    state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://${image}" | jq '.verification.status // 2')"
-    if [[ "${state}" != "0" ]]; then
+    if ! vcn authenticate "${vcn_cli[@]}" --silent "docker://${image}" ; then
         bashio::log.warning "Validation of ${image} fails!"
         return 1
     fi
