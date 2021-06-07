@@ -25,8 +25,7 @@ runs:
         sudo curl -Lo /usr/local/bin/vcn https://github.com/vchain-us/vcn/releases/download/v0.9.6/vcn-v0.9.6-linux-amd64-static
         sudo chmod a+x /usr/local/bin/vcn
 
-        state="$(vcn authenticate --org home-assistant.io --output json docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} | jq '.verification.status // 2')"
-        if [[ "${state}" != "0" ]]; then
+        if ! vcn authenticate --org home-assistant.io --silent docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
           echo "Invalid signature!"
           exit 1
         fi

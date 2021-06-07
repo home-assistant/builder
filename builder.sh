@@ -706,8 +706,7 @@ function codenotary_sign() {
         vcn_cli+=("--org" "${trust}")
     fi
     
-    state="$(vcn authenticate "${vcn_cli[@]}" --output json "docker://${image}" | jq '.verification.status // 2')"
-    if [[ "${state}" != "0" ]]; then
+    if ! vcn authenticate "${vcn_cli[@]}" --silent "docker://${image}"; then
         VCN_NOTARIZATION_PASSWORD="${CODENOTARY_PASSWORD}" vcn notarize --public "docker://${image}" || bashio::exit.nok "Failed to sign the image"
     fi
     bashio::log.info "Signed ${image} with ${trust}"
