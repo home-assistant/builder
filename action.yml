@@ -22,10 +22,12 @@ runs:
 
     - shell: bash
       run: |
-        sudo curl -Lo /usr/local/bin/vcn https://github.com/vchain-us/vcn/releases/download/v0.9.6/vcn-v0.9.6-linux-amd64-static
-        sudo chmod a+x /usr/local/bin/vcn
+        mkdir -p "${{ github.action_path }}/bin"
+        curl -Lo "${{ github.action_path }}/bin/vcn" https://github.com/vchain-us/vcn/releases/download/v0.9.6/vcn-v0.9.6-linux-amd64-static
+        chmod a+x "${{ github.action_path }}/bin/vcn"
+        echo "${{ github.action_path }}/bin" >> $GITHUB_PATH
 
-        if ! vcn authenticate --org home-assistant.io --silent docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
+        if ! "${{ github.action_path }}/bin/vcn" authenticate --org home-assistant.io --silent docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
           echo "Invalid signature!"
           exit 1
         fi
