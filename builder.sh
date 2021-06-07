@@ -315,6 +315,9 @@ function run_build() {
         push_images+=("${shadow_repository}/${image}:${version}")
     fi
 
+    # Singing image
+    codenotary_sign "${CODENOTARY_OWNER}" "${repository}/${image}:${version}"
+
     # Push images
     if bashio::var.true "${DOCKER_PUSH}"; then
         for i in "${push_images[@]}"; do
@@ -333,9 +336,6 @@ function run_build() {
             done
         done
     fi
-
-    # Singing image
-    codenotary_sign "${CODENOTARY_OWNER}" "${repository}/${image}:${version}"
 }
 
 
@@ -694,6 +694,7 @@ function codenotary_sign() {
     local trust=$1
     local image=$2
     local vcn_cli=()
+    local success=false
 
     if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
         return 0
@@ -705,8 +706,18 @@ function codenotary_sign() {
         vcn_cli+=("--org" "${trust}")
     fi
     
-    if ! vcn authenticate "${vcn_cli[@]}" --silent "docker://${image}"; then
-        VCN_NOTARIZATION_PASSWORD="${CODENOTARY_PASSWORD}" vcn notarize --public "docker://${image}" || bashio::exit.nok "Failed to sign the image"
+    for j in {1..10}; do
+        if ! vcn authenticate "${vcn_cli[@]}" --silent "docker://${image}"; then
+            VCN_NOTARIZATION_PASSWORD="${CODENOTARY_PASSWORD}" vcn notarize --public "docker://${image}" || true
+        else
+            success=true
+            break
+        fi
+        sleep 5
+    done
+
+    if bashio::var.false "${success}"; then
+        bashio::exit.nok "Failed to sign the image"
     fi
     bashio::log.info "Signed ${image} with ${trust}"
 }
