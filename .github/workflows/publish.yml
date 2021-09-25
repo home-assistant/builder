@@ -54,7 +54,7 @@ jobs:
           password: ${{ secrets.GIT_TOKEN }}
 
       - name: Publish ${{ matrix.architecture }} builder
-        uses: ./
+        uses: home-assistant/builder@2021.07.0
         with:
           args: |
             --${{ matrix.architecture }} \
