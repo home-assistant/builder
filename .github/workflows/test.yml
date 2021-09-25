@@ -1,4 +1,4 @@
-name: 'Test'
+name: "Test"
 
 on:
   pull_request:
@@ -10,12 +10,12 @@ jobs:
     outputs:
       architectures: ${{ steps.info.outputs.architectures }}
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v2.3.4
+      - name: Checkout the repository
+        uses: actions/checkout@v2.3.4
 
-    - name: Get information
-      id: info
-      uses: home-assistant/actions/helpers/info@master
+      - name: Get information
+        id: info
+        uses: home-assistant/actions/helpers/info@master
 
   build:
     name: Test action build
@@ -26,23 +26,23 @@ jobs:
       matrix:
         architecture: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v2.3.4
+      - name: Checkout the repository
+        uses: actions/checkout@v2.3.4
 
-    - name: Build the builder
-      uses: home-assistant/builder@master
-      with:
-        args: |
-          --test \
-          --amd64 \
-          --target /data \
-          --generic latest
+      - name: Build the builder
+        uses: ./
+        with:
+          args: |
+            --test \
+            --amd64 \
+            --target /data \
+            --generic latest
 
-    - name: Test ${{ matrix.architecture }} builder
-      uses: ./
-      with:
-        args: |
-          --test \
-          --${{ matrix.architecture }} \
-          --target /data \
-          --generic ${{ github.sha }}
+      - name: Test ${{ matrix.architecture }} builder
+        uses: ./
+        with:
+          args: |
+            --test \
+            --${{ matrix.architecture }} \
+            --target /data \
+            --generic ${{ github.sha }}
