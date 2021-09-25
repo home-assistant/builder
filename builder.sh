@@ -309,7 +309,7 @@ function run_build() {
         bashio::log.info "Generate repository shadow images"
         docker tag "${repository}/${image}:${version}" "${shadow_repository}/${image}:${version}"
         for tag_image in "${docker_tags[@]}"; do
-            bashio::log.info "Create shadow-image tag: ${tag_image}"
+            bashio::log.info "Create shadow-image tag: ${shadow_repository}/${image}:${tag_image}"
             docker tag "${repository}/${image}:${version}" "${shadow_repository}/${image}:${tag_image}"
             push_images+=("${shadow_repository}/${image}:${tag_image}")
         done
@@ -339,6 +339,28 @@ function run_build() {
     fi
 }
 
+function convert_to_json() {
+    # Convert [build|config].[yml|yaml] to json in a temp directory
+    for file in config build; do
+        if bashio::fs.file_exists "${TARGET}/${file}.yml"; then
+            yq e -N -M -o=json "${TARGET}/${file}.yml" > "/tmp/build_config/${file}.json"
+        elif bashio::fs.file_exists "${TARGET}/${file}.yaml"; then
+            yq e -N -M -o=json "${TARGET}/${file}.yaml" > "/tmp/build_config/${file}.json"
+        fi
+    done
+}
+
+function copy_config_tmp() {
+    # Copy [build|config].json to a temp directory
+    mkdir -p /tmp/build_config
+    for file in config build; do
+        if bashio::fs.file_exists "${TARGET}/${file}.json"; then
+            cp "${TARGET}/${file}.json" "/tmp/build_config/${file}.json"
+        fi
+    done
+}
+
+
 
 #### Build functions ####
 
@@ -356,13 +378,14 @@ function build_base() {
     local docker_tags=()
 
     # Read build.json
-    if bashio::fs.file_exists "${TARGET}/build.json"; then
-        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "${TARGET}/build.json")"
-        args="$(jq --raw-output '.args // empty | keys[]' "${TARGET}/build.json")"
-        labels="$(jq --raw-output '.labels // empty | keys[]' "${TARGET}/build.json")"
-        raw_image="$(jq --raw-output '.image // empty' "${TARGET}/build.json")"
-        version_tag="$(jq --raw-output '.version_tag // false' "${TARGET}/build.json")"
-        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
+    if bashio::fs.file_exists "/tmp/build_config/build.json"; then
+        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "/tmp/build_config/build.json")"
+        args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
+        labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
+        raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
+        version_tag="$(jq --raw-output '.version_tag // false' "/tmp/build_config/build.json")"
+        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
+
     fi
 
     # Set defaults build things
@@ -392,7 +415,7 @@ function build_base() {
     # Additional build args
     if bashio::var.has_value "${args}"; then
         for arg in ${args}; do
-            value="$(jq --raw-output ".args.${arg}" "${TARGET}/build.json")"
+            value="$(jq --raw-output ".args.${arg}" "/tmp/build_config/build.json")"
             docker_cli+=("--build-arg" "${arg}=${value}")
         done
     fi
@@ -400,7 +423,7 @@ function build_base() {
     # Additional build labels
     if bashio::var.has_value "${labels}"; then
         for label in ${labels}; do
-            value="$(jq --raw-output ".labels.\"${label}\"" "${TARGET}/build.json")"
+            value="$(jq --raw-output ".labels.\"${label}\"" "/tmp/build_config/build.json")"
             docker_cli+=("--label" "${label}=${value}")
         done
     fi
@@ -439,10 +462,10 @@ function build_addon() {
     local docker_tags=()
 
     # Read addon build.json
-    if bashio::fs.file_exists "$TARGET/build.json"; then
-        build_from="$(jq --raw-output ".build_from.$build_arch // empty" "$TARGET/build.json")"
-        args="$(jq --raw-output '.args // empty | keys[]' "$TARGET/build.json")"
-        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
+    if bashio::fs.file_exists "/tmp/build_config/build.json"; then
+        build_from="$(jq --raw-output ".build_from.$build_arch // empty" "/tmp/build_config/build.json")"
+        args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
+        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
     fi
 
     # Set defaults build things
@@ -453,23 +476,23 @@ function build_addon() {
     # Additional build args
     if [ -n "$args" ]; then
         for arg in $args; do
-            value="$(jq --raw-output ".args.$arg" "$TARGET/build.json")"
+            value="$(jq --raw-output ".args.$arg" "/tmp/build_config/build.json")"
             docker_cli+=("--build-arg" "$arg=$value")
         done
     fi
 
     # Read addon config.json
-    name="$(jq --raw-output '.name // empty' "$TARGET/config.json" | sed "s/'//g")"
-    description="$(jq --raw-output '.description // empty' "$TARGET/config.json" | sed "s/'//g")"
-    url="$(jq --raw-output '.url // empty' "$TARGET/config.json")"
-    raw_image="$(jq --raw-output '.image // empty' "$TARGET/config.json")"
-    mapfile -t supported_arch < <(jq --raw-output '.arch // empty' "$TARGET/config.json")
+    name="$(jq --raw-output '.name // empty' "/tmp/build_config/config.json" | sed "s/'//g")"
+    description="$(jq --raw-output '.description // empty' "/tmp/build_config/config.json" | sed "s/'//g")"
+    url="$(jq --raw-output '.url // empty' "/tmp/build_config/config.json")"
+    raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/config.json")"
+    mapfile -t supported_arch < <(jq --raw-output '.arch // empty' "/tmp/build_config/config.json")
     
     # Read version from config.json when VERSION is not set
     if [ -n "$VERSION" ]; then
     	version="$VERSION"
     else
-    	version="$(jq --raw-output '.version' "$TARGET/config.json")"
+    	version="$(jq --raw-output '.version' "/tmp/build_config/config.json")"
     fi
 
     # Check arch
@@ -513,13 +536,13 @@ function build_generic() {
     local docker_tags=()
 
     # Read build.json
-    if bashio::fs.file_exists "$TARGET/build.json"; then
-        build_from="$(jq --raw-output ".build_from.$build_arch // empty" "$TARGET/build.json")"
-        args="$(jq --raw-output '.args // empty | keys[]' "$TARGET/build.json")"
-        labels="$(jq --raw-output '.labels // empty | keys[]' "$TARGET/build.json")"
-        raw_image="$(jq --raw-output '.image // empty' "$TARGET/build.json")"
-        version_tag="$(jq --raw-output '.version_tag // false' "$TARGET/build.json")"
-        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
+    if bashio::fs.file_exists "/tmp/build_config/build.json"; then
+        build_from="$(jq --raw-output ".build_from.$build_arch // empty" "/tmp/build_config/build.json")"
+        args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
+        labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
+        raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
+        version_tag="$(jq --raw-output '.version_tag // false' "/tmp/build_config/build.json")"
+        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
     fi
 
     # Set defaults build things
@@ -539,7 +562,7 @@ function build_generic() {
     # Additional build args
     if bashio::var.has_value "$args"; then
         for arg in $args; do
-            value="$(jq --raw-output ".args.$arg" "$TARGET/build.json")"
+            value="$(jq --raw-output ".args.$arg" "/tmp/build_config/build.json")"
             docker_cli+=("--build-arg" "$arg=$value")
         done
     fi
@@ -547,7 +570,7 @@ function build_generic() {
     # Additional build labels
     if bashio::var.has_value "$labels"; then
         for label in $labels; do
-            value="$(jq --raw-output ".labels.\"$label\"" "$TARGET/build.json")"
+            value="$(jq --raw-output ".labels.\"$label\"" "/tmp/build_config/build.json")"
             docker_cli+=("--label" "$label=$value")
         done
     fi
@@ -584,13 +607,13 @@ function build_machine() {
     local docker_tags=()
 
     # Read build.json
-    if bashio::fs.file_exists "${TARGET}/build.json"; then
-        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "${TARGET}/build.json")"
-        args="$(jq --raw-output '.args // empty | keys[]' "${TARGET}/build.json")"
-        labels="$(jq --raw-output '.labels // empty | keys[]' "${TARGET}/build.json")"
-        raw_image="$(jq --raw-output '.image // empty' "${TARGET}/build.json")"
-        version_tag="$(jq --raw-output '.version_tag // false' "${TARGET}/build.json")"
-        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "${TARGET}/build.json")"
+    if bashio::fs.file_exists "/tmp/build_config/build.json"; then
+        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "/tmp/build_config/build.json")"
+        args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
+        labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
+        raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
+        version_tag="$(jq --raw-output '.version_tag // false' "/tmp/build_config/build.json")"
+        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
     fi
 
     # Modify build_from
@@ -614,7 +637,7 @@ function build_machine() {
     # Additional build args
     if bashio::var.has_value "${args}"; then
         for arg in ${args}; do
-            value="$(jq --raw-output ".args.${arg}" "${TARGET}/build.json")"
+            value="$(jq --raw-output ".args.${arg}" "/tmp/build_config/build.json")"
             docker_cli+=("--build-arg" "${arg}=${value}")
         done
     fi
@@ -622,7 +645,7 @@ function build_machine() {
     # Additional build labels
     if bashio::var.has_value "${labels}"; then
         for label in ${labels}; do
-            value="$(jq --raw-output ".labels.\"${label}\"" "${TARGET}/build.json")"
+            value="$(jq --raw-output ".labels.\"${label}\"" "/tmp/build_config/build.json")"
             docker_cli+=("--label" "${label}=${value}")
         done
     fi
@@ -903,6 +926,12 @@ mkdir -p /data
 # Setup docker env
 init_crosscompile
 start_docker
+
+# Convert configuration files to json if needed
+convert_to_json
+
+# Copy configuration files to tmp
+copy_config_tmp
 
 # Login into dockerhub & setup CodeNotary
 if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASSWORD" ]; then
