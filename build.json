@@ -1,0 +1,19 @@
+{
+    "image": "homeassistant/{arch}-builder",
+    "shadow_repository": "ghcr.io/home-assistant",
+    "build_from": {
+        "aarch64": "ghcr.io/home-assistant/aarch64-base:3.13",
+        "armv7": "ghcr.io/home-assistant/armv7-base:3.13",
+        "armhf": "ghcr.io/home-assistant/armhf-base:3.13",
+        "amd64": "ghcr.io/home-assistant/amd64-base:3.13",
+        "i386": "ghcr.io/home-assistant/i386-base:3.13"
+    },
+    "args": {
+        "VCN_VERSION": "0.9.6",
+        "YQ_VERSION": "v4.13.2"
+    },
+    "labels": {
+        "io.hass.type": "builder",
+        "org.opencontainers.image.source": "https://github.com/home-assistant/builder"
+    }
+}
