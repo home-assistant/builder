@@ -53,7 +53,6 @@ RUN \
         exit 1; \
     fi \
     && chmod +x /usr/bin/yq \
-    && yq --help \
     \
     && apk del .build-dependencies \
     && rm -rf /usr/src/vcn
