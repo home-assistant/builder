@@ -7,8 +7,10 @@ ENV \
     VCN_OTP_EMPTY=true \
     LANG=C.UTF-8
 
-ARG BUILD_ARCH
-ARG VCN_VERSION
+ARG \
+    BUILD_ARCH \
+    VCN_VERSION \
+    YQ_VERSION
 
 RUN \
     set -x \
@@ -40,6 +42,18 @@ RUN \
     \
     && rm -rf /root/go /root/.cache \
     && mv vcn /usr/bin/vcn \
+    && if [ "${BUILD_ARCH}" = "armhf" ] || [ "${BUILD_ARCH}" = "armv7" ]; then \
+        wget -q -O /usr/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_arm; \
+    elif [ "${BUILD_ARCH}" = "aarch64" ]; then \
+        wget -q -O /usr/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_arm64; \
+    elif [ "${BUILD_ARCH}" = "i386" ]; then \
+        wget -q -O /usr/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_386; \
+    elif [ "${BUILD_ARCH}" = "amd64" ]; then \
+        wget -q -O /usr/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64; \
+    else \
+        exit 1; \
+    fi \
+    && chmod +x /usr/bin/yq \
     \
     && apk del .build-dependencies \
     && rm -rf /usr/src/vcn
