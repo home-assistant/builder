@@ -341,6 +341,7 @@ function run_build() {
 
 function convert_to_json() {
     # Convert [build|config].[yml|yaml] to json in a temp directory
+    mkdir -p /tmp/build_config
     for file in config build; do
         if bashio::fs.file_exists "${TARGET}/${file}.yml"; then
             yq e -N -M -o=json "${TARGET}/${file}.yml" > "/tmp/build_config/${file}.json"
