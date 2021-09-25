@@ -7,9 +7,10 @@ ENV \
     VCN_OTP_EMPTY=true \
     LANG=C.UTF-8
 
-ARG BUILD_ARCH
-ARG VCN_VERSION
-ARG YQ_VERSION
+ARG \
+    BUILD_ARCH \
+    VCN_VERSION \
+    YQ_VERSION
 
 RUN \
     set -x \
