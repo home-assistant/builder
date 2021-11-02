@@ -16,18 +16,16 @@ runs:
           input="latest"
         fi
         echo "::set-output name=version::${input}"
-
-    - shell: bash
-      run: docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
+    
+    - uses: home-assistant/actions/helpers/cas@master
 
     - shell: bash
       run: |
-        mkdir -p "${{ github.action_path }}/bin"
-        curl -Lo "${{ github.action_path }}/bin/vcn" https://github.com/vchain-us/vcn/releases/download/v0.9.6/vcn-v0.9.6-linux-amd64-static
-        chmod a+x "${{ github.action_path }}/bin/vcn"
-        echo "${{ github.action_path }}/bin" >> $GITHUB_PATH
+        docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
 
-        if ! "${{ github.action_path }}/bin/vcn" authenticate --org home-assistant.io --silent docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
+    - shell: bash
+      run: |
+        if ! cas authenticate --signerID notary@home-assistant.io --silent docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
           echo "Invalid signature!"
           exit 1
         fi
