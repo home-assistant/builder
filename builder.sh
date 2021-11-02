@@ -264,7 +264,7 @@ function run_build() {
     docker_cli+=("--label" "org.opencontainers.image.version=${release}")
 
     # Validate the base image
-    if ! codenotary_validate "${codenotary_from}" "${build_from}" "true"; then
+    if ! codenotary_validate "${codenotary_base}" "${build_from}" "true"; then
         bashio::exit.nok "Invalid base image ${build_from}"
     fi
 
@@ -441,7 +441,7 @@ function build_base() {
     # Start build
     run_build "${TARGET}" "${repository}" "${image}" "${VERSION_BASE}" \
         "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}" \
-        "${codenotary_from}" "${codenotary_sign}"
+        "${codenotary_base}" "${codenotary_sign}"
 }
 
 
@@ -523,7 +523,7 @@ function build_addon() {
     # Start build
     run_build "$TARGET" "$repository" "$image" "$version" \
         "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}" \
-        "${codenotary_from}" "${codenotary_sign}"
+        "${codenotary_base}" "${codenotary_sign}"
 }
 
 
@@ -598,7 +598,7 @@ function build_generic() {
     # Start build
     run_build "$TARGET" "$repository" "$image" "$VERSION" \
         "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}" \
-        "${codenotary_from}" "${codenotary_sign}"
+        "${codenotary_base}" "${codenotary_sign}"
 }
 
 
@@ -681,7 +681,7 @@ function build_machine() {
     # Start build
     run_build "${TARGET}" "${repository}" "${image}" "${VERSION}" \
         "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}" \
-        "${codenotary_from}" "${codenotary_sign}"
+        "${codenotary_base}" "${codenotary_sign}"
 }
 
 
@@ -732,6 +732,7 @@ function codenotary_setup() {
 function codenotary_sign() {
     local trust=$1
     local image=$2
+
     local success=false
 
     if bashio::var.false "${DOCKER_PUSH}" || bashio::var.is_empty "${CAS_API_KEY+x}"; then
