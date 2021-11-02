@@ -137,10 +137,9 @@ Options:
         Build the machine based image for a release/landingpage.
 
   Security:
-    --with-codenotary <USER> <PASSWORD> <OWNER>
+    --with-codenotary
         Enable signing images with CodeNotary. Need set follow env:
-    --validate-from <ORG|signer>
-        Validate the FROM image which is used to build the image.
+        - CAS_API_KEY
 EOF
 
     bashio::exit.nok
