@@ -132,7 +132,7 @@ Options:
         Build the machine based image for a release/landingpage.
 
   Security:
-    Enable signing images with CodeNotary. Need set follow env:
+    Enable signing images with Codenotary. Need set follow env:
     - CAS_API_KEY
 EOF
 
