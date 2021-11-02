@@ -17,7 +17,7 @@ DOCKER_PUSH=true
 DOCKER_USER=
 DOCKER_PASSWORD=
 DOCKER_LOCAL=false
-VCN_NOTARY=false
+CODENOTARY=false
 VCN_FROM=
 CODENOTARY_USER=
 CODENOTARY_PASSWORD=
@@ -137,9 +137,8 @@ Options:
         Build the machine based image for a release/landingpage.
 
   Security:
-    --with-codenotary
-        Enable signing images with CodeNotary. Need set follow env:
-        - CAS_API_KEY
+    Enable signing images with CodeNotary. Need set follow env:
+    - CAS_API_KEY
 EOF
 
     bashio::exit.nok
@@ -215,6 +214,8 @@ function run_build() {
     local docker_cli=("${!7}")
     local docker_tags=("${!8}")
     local shadow_repository=${9}
+    local codenotary_base=${10}
+    local codenotary_sign=${11}
 
     local push_images=()
     local cache_tag="latest"
@@ -251,7 +252,7 @@ function run_build() {
         fi
 
         bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag}"
-        if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 && codenotary_validate "${CODENOTARY_OWNER}" "${repository}/${image}:${cache_tag}" "false"; then
+        if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 && codenotary_validate "${codenotary_sign}" "${repository}/${image}:${cache_tag}" "false"; then
             docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
         else
             docker_cli+=("--no-cache")
@@ -268,7 +269,7 @@ function run_build() {
     docker_cli+=("--label" "org.opencontainers.image.version=${release}")
 
     # Validate the base image
-    if ! codenotary_validate "${VCN_FROM}" "${build_from}" "true"; then
+    if ! codenotary_validate "${codenotary_from}" "${build_from}" "true"; then
         bashio::exit.nok "Invalid base image ${build_from}"
     fi
 
@@ -316,7 +317,7 @@ function run_build() {
     fi
 
     # Singing image
-    codenotary_sign "${CODENOTARY_OWNER}" "${repository}/${image}:${version}"
+    codenotary_sign "${codenotary_sign}" "${repository}/${image}:${version}"
 
     # Push images
     if bashio::var.true "${DOCKER_PUSH}"; then
@@ -374,6 +375,8 @@ function build_base() {
     local raw_image=
     local version_tag=false
     local args=
+    local codenotary_base=
+    local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
 
@@ -385,7 +388,8 @@ function build_base() {
         raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
         version_tag="$(jq --raw-output '.version_tag // false' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
-
+        codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
+        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Set defaults build things
@@ -441,7 +445,8 @@ function build_base() {
 
     # Start build
     run_build "${TARGET}" "${repository}" "${image}" "${VERSION_BASE}" \
-        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}"
+        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}" \
+        "${codenotary_from}" "${codenotary_sign}"
 }
 
 
@@ -458,6 +463,8 @@ function build_addon() {
     local description=
     local url=
     local args=
+    local codenotary_base=
+    local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
 
@@ -466,6 +473,8 @@ function build_addon() {
         build_from="$(jq --raw-output ".build_from.$build_arch // empty" "/tmp/build_config/build.json")"
         args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
+        codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
+        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Set defaults build things
@@ -518,7 +527,8 @@ function build_addon() {
 
     # Start build
     run_build "$TARGET" "$repository" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}" \
+        "${codenotary_from}" "${codenotary_sign}"
 }
 
 
@@ -532,6 +542,8 @@ function build_generic() {
     local raw_image=
     local version_tag=false
     local args=
+    local codenotary_base=
+    local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
 
@@ -543,6 +555,8 @@ function build_generic() {
         raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
         version_tag="$(jq --raw-output '.version_tag // false' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
+        codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
+        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Set defaults build things
@@ -588,7 +602,8 @@ function build_generic() {
 
     # Start build
     run_build "$TARGET" "$repository" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}" \
+        "${codenotary_from}" "${codenotary_sign}"
 }
 
 
@@ -603,6 +618,8 @@ function build_machine() {
     local build_from=
     local shadow_repository=
     local version_tag=false
+    local codenotary_base=
+    local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
 
@@ -614,6 +631,8 @@ function build_machine() {
         raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
         version_tag="$(jq --raw-output '.version_tag // false' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
+        codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
+        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Modify build_from
@@ -666,7 +685,8 @@ function build_machine() {
 
     # Start build
     run_build "${TARGET}" "${repository}" "${image}" "${VERSION}" \
-        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}"
+        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}" \
+        "${codenotary_from}" "${codenotary_sign}"
 }
 
 
@@ -707,32 +727,25 @@ function init_crosscompile() {
 #### Security CodeNotary ####
 
 function codenotary_setup() {
-    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
+    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.is_empty "${CAS_API_KEY+x}"; then
         return 0
     fi
 
-    VCN_USER="${CODENOTARY_USER}" VCN_PASSWORD="${CODENOTARY_PASSWORD}" vcn login /dev/null 2>&1 || bashio::exit.nok "Login to CodeNotary fails!"
+    cas login /dev/null 2>&1 || bashio::exit.nok "Login to Codenotary fails!"
 }
 
 function codenotary_sign() {
     local trust=$1
     local image=$2
-    local vcn_cli=()
     local success=false
 
-    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${VCN_NOTARY}"; then
+    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.is_empty "${CAS_API_KEY+x}"; then
         return 0
-    fi
-
-    if [[ "${trust}" =~ ^0x ]]; then
-        vcn_cli+=("--signerID" "${trust}")
-    else
-        vcn_cli+=("--org" "${trust}")
     fi
     
     for j in {1..10}; do
-        if ! vcn authenticate "${vcn_cli[@]}" --silent "docker://${image}"; then
-            VCN_NOTARIZATION_PASSWORD="${CODENOTARY_PASSWORD}" vcn notarize --public "docker://${image}" || true
+        if ! cas authenticate --signerID "${trust}" --silent "docker://${image}"; then
+            cas notarize --public "docker://${image}" || true
         else
             success=true
             break
@@ -750,7 +763,6 @@ function codenotary_validate() {
     local trust=$1
     local image=$2
     local pull=$3
-    local vcn_cli=()
 
     if ! bashio::var.has_value "${trust}"; then
         return 0
@@ -761,13 +773,7 @@ function codenotary_validate() {
         docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
     fi
 
-    if [[ "${trust}" =~ ^0x ]]; then
-        vcn_cli+=("--signerID" "${trust}")
-    else
-        vcn_cli+=("--org" "${trust}")
-    fi
-
-    if ! vcn authenticate "${vcn_cli[@]}" --silent "docker://${image}" ; then
+    if ! cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
         bashio::log.warning "Validation of ${image} fails!"
         return 1
     fi
@@ -891,19 +897,6 @@ while [[ $# -gt 0 ]]; do
             SELF_CACHE=true
             VERSION="$(echo "$2" | cut -d '=' -f 1)"
             extract_machine_build "$(echo "$2" | cut -d '=' -f 2)"
-            shift
-            ;;
-        --with-codenotary)
-            VCN_NOTARY=true
-            CODENOTARY_USER=$2
-            shift
-            CODENOTARY_PASSWORD=$2
-            shift
-            CODENOTARY_OWNER=$2
-            shift
-            ;;
-        --validate-from)
-            VCN_FROM=$2
             shift
             ;;
         *)
