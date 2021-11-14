@@ -223,8 +223,8 @@ function run_build() {
     local release="${version}"
 
     # Overwrites
-    if bashio::var.has_value "${DOCKER_HUB}"; then repository="${DOCKER_HUB}"; fi
-    if bashio::var.has_value "${IMAGE}"; then image="${IMAGE}"; fi
+    if bashio::var.has_value "${DOCKER_HUB}"; then repository="${DOCKER_HUB@L}"; fi
+    if bashio::var.has_value "${IMAGE}"; then image="${IMAGE@L}"; fi
     if bashio::var.has_value "${RELEASE}"; then release="${RELEASE}"; fi
 
     # Replace {arch} with build arch for image
