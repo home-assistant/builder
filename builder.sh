@@ -741,7 +741,7 @@ function codenotary_sign() {
     
     for j in {1..10}; do
         if ! cas authenticate --signerID "${trust}" --silent "docker://${image}"; then
-            cas notarize --public "docker://${image}" || true
+            cas notarize --ci-attr "docker://${image}" || true
         else
             success=true
             break
