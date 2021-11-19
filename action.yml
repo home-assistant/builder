@@ -5,6 +5,10 @@ inputs:
     description: "Arguments passed to the builder"
     required: true
     default: "--help"
+  cas_token:
+    description: "CodeNotary CAS token"
+    required: false
+    default: ""
 runs:
   using: "composite"
   steps:
@@ -43,6 +47,7 @@ runs:
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
             -v ~/.docker:/root/.docker \
             -v ${{ github.workspace }}:/data \
+            -e CAS_API_KEY="${{ input.cas_token }}" \
             ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} \
             ${{ inputs.args }}
 
