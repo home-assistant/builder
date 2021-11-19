@@ -56,8 +56,9 @@ jobs:
       - name: Publish ${{ matrix.architecture }} builder
         uses: ./
         with:
-          cas_token: ${{ secrets.CAS_TOKEN }}
           args: |
             --${{ matrix.architecture }} \
             --target /data \
             --generic $GIT_TAG_NAME
+        env:
+          CAS_API_KEY: ${{ secrets.CAS_TOKEN }}
