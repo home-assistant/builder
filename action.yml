@@ -40,6 +40,9 @@ runs:
       id: build
       run: |
         env > "${{ github.action_path }}/env_file"
+        sed -i "/\(HOME\|TERM\|PWD\|HOSTNAME\|PATH\|SHLVL\)/d" "${{ github.action_path }}/env_file"
+        cat "${{ github.action_path }}/env_file"
+
         docker run --rm --privileged \
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
             -v ~/.docker:/root/.docker \
