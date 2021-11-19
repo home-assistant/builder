@@ -8,7 +8,7 @@ You can use this repository as a GitHub action to test and/or publish your build
 
 Use the `with.args` key to pass in arguments to the builder, to see what arguments are supported you can look at the [arguments](#Arguments) section.
 
-For [CAS](https://cas.codenotary.com/) key, use `with.cas_token` which would allow you to sign your builds.
+For [CAS](https://cas.codenotary.com/) support, add `env.CAS_API_KEY` which would allow you to use the `codenotary` properties from `build` configs.
 
 ### Test action example
 
