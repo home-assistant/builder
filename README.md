@@ -8,6 +8,8 @@ You can use this repository as a GitHub action to test and/or publish your build
 
 Use the `with.args` key to pass in arguments to the builder, to see what arguments are supported you can look at the [arguments](#Arguments) section.
 
+For [CAS](https://cas.codenotary.com/) support, add `env.CAS_API_KEY` which would allow you to use the `codenotary` properties from `build` configs.
+
 ### Test action example
 
 ```yaml
@@ -65,10 +67,9 @@ jobs:
 ## Arguments
 
 ```
-  Options:
-    -h, --help
+Options:
+  -h, --help
         Display this help and exit.
-
   Repository / Data
     -r, --repository <REPOSITORY>
         Set git repository to load data from.
@@ -76,7 +77,6 @@ jobs:
         Set git branch for repository.
     -t, --target <PATH_TO_BUILD>
         Set local folder or path inside repository for build.
-
   Version/Image handling
     -v, --version <VERSION>
         Overwrite version/tag of build.
@@ -88,7 +88,6 @@ jobs:
         Use this as main tag.
     --version-from <VERSION>
         Use this to set build_from tag if not specified.
-
   Architecture
     --armhf
         Build for arm v6.
@@ -102,7 +101,6 @@ jobs:
         Build for intel/amd 32bit.
     --all
         Build all architecture.
-
   Build handling
     --test
        Disable push to dockerhub.
@@ -124,7 +122,6 @@ jobs:
        Password to login into docker with
     Use the host docker socket if mapped into container:
        /var/run/docker.sock
-
   Internals:
     --addon
         Default on. Run all things for an addon build.
@@ -134,12 +131,9 @@ jobs:
         Build our base images.
     --machine <VERSION=ALL,X,Y>
         Build the machine based image for a release/landingpage.
-
   Security:
-    --with-codenotary <USER> <PASSWORD> <OWNER>
-        Enable signing images with CodeNotary. Need set follow env:
-    --validate-cache <ORG|signer>
-        Validate the cache image which is used to build the image.
+    Enable signing images with Codenotary. Need set follow env:
+    - CAS_API_KEY
 ```
 
 ## Local installation
