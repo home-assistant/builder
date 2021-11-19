@@ -25,7 +25,7 @@ runs:
 
     - shell: bash
       run: |
-        if ! cas authenticate --signerID notary@home-assistant.io --silent docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
+        if ! cas authenticate --silent --signerID notary@home-assistant.io docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
           echo "Invalid signature!"
           exit 1
         fi
