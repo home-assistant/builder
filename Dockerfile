@@ -20,8 +20,6 @@ RUN \
         https://github.com/codenotary/cas \
     && cd cas \
     && make cas \
-    && ls -ls \
-    && rm -rf /root/go /root/.cache \
     && mv cas /usr/bin/cas \
     && if [ "${BUILD_ARCH}" = "armhf" ] || [ "${BUILD_ARCH}" = "armv7" ]; then \
         wget -q -O /usr/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_arm"; \
@@ -37,6 +35,7 @@ RUN \
     && chmod +x /usr/bin/yq \
     \
     && apk del .build-dependencies \
+    && rm -rf /root/go /root/.cache \
     && rm -rf /usr/src/cas
 
 COPY builder.sh /usr/bin/
