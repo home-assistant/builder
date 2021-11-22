@@ -25,11 +25,11 @@ runs:
 
     - shell: bash
       run: |
-        for j in {1..10}; do
+        for j in {1..15}; do
           if CAS_API_KEY= cas authenticate --silent --signerID notary@home-assistant.io docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
             exit 0
           fi
-          sleep 5
+          sleep $((5 * j))
         done
 
         echo "Invalid signature!"

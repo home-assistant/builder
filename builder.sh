@@ -726,7 +726,14 @@ function codenotary_setup() {
         return 0
     fi
 
-    cas login > /dev/null 2>&1 || bashio::exit.nok "Login to Codenotary fails!"
+    for j in {1..15}; do
+        if cas login > /dev/null 2>&1; then
+            return 0
+        fi
+        sleep $((5 * j))
+    done 
+        
+    bashio::exit.nok "Login to Codenotary fails!"
 }
 
 function codenotary_sign() {
@@ -739,14 +746,14 @@ function codenotary_sign() {
         return 0
     fi
     
-    for j in {1..10}; do
+    for j in {1..15}; do
         if ! cas authenticate --signerID "${trust}" --silent "docker://${image}"; then
             cas notarize --ci-attr "docker://${image}" || true
         else
             success=true
             break
         fi
-        sleep 5
+        sleep $((5 * j))
     done
 
     if bashio::var.false "${success}"; then
@@ -770,12 +777,12 @@ function codenotary_validate() {
         docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
     fi
 
-    for j in {1..10}; do
+    for j in {1..15}; do
         if cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
             success=true
             break
         fi
-        sleep 5
+        sleep $((5 * j))
     done
 
     if bashio::var.false "${success}"; then
