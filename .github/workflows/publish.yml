@@ -60,3 +60,5 @@ jobs:
             --${{ matrix.architecture }} \
             --target /data \
             --generic $GIT_TAG_NAME
+        env:
+          CAS_API_KEY: ${{ secrets.CAS_TOKEN }}
