@@ -726,7 +726,7 @@ function codenotary_setup() {
         return 0
     fi
 
-    cas login /dev/null 2>&1 || bashio::exit.nok "Login to Codenotary fails!"
+    cas login > /dev/null 2>&1 || bashio::exit.nok "Login to Codenotary fails!"
 }
 
 function codenotary_sign() {
@@ -759,6 +759,7 @@ function codenotary_validate() {
     local trust=$1
     local image=$2
     local pull=$3
+    local success=false
 
     if ! bashio::var.has_value "${trust}"; then
         return 0
@@ -769,11 +770,18 @@ function codenotary_validate() {
         docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
     fi
 
-    if ! cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
+    for j in {1..10}; do
+        if cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
+            success=true
+            break
+        fi
+        sleep 5
+    done
+
+    if bashio::var.false "${success}"; then
         bashio::log.warning "Validation of ${image} fails!"
         return 1
     fi
-
     bashio::log.info "Image ${image} is trusted"
 }
 
