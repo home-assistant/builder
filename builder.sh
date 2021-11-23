@@ -778,7 +778,8 @@ function codenotary_validate() {
     fi
 
     for j in {1..15}; do
-        if cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
+        # shellcheck disable=SC1007
+        if CAS_API_KEY= cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
             success=true
             break
         fi
