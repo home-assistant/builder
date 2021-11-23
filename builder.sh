@@ -722,7 +722,7 @@ function init_crosscompile() {
 #### Security CodeNotary ####
 
 function codenotary_setup() {
-    if bashio::var.is_empty "${CAS_API_KEY+x}"; then
+    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.is_empty "${CAS_API_KEY+x}"; then
         return 0
     fi
 
@@ -778,7 +778,8 @@ function codenotary_validate() {
     fi
 
     for j in {1..15}; do
-        if cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
+        # shellcheck disable=SC1007
+        if CAS_API_KEY= cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
             success=true
             break
         fi
