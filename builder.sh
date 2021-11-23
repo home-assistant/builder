@@ -722,7 +722,7 @@ function init_crosscompile() {
 #### Security CodeNotary ####
 
 function codenotary_setup() {
-    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.is_empty "${CAS_API_KEY+x}"; then
+    if bashio::var.is_empty "${CAS_API_KEY+x}"; then
         return 0
     fi
 
