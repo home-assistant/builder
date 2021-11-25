@@ -701,7 +701,7 @@ function extract_machine_build() {
         done
 
         for i in "${remove[@]}"; do
-            unset $BUILD_MACHINE["$i"]
+            unset "BUILD_MACHINE[$i]"
         done
     fi
 }
