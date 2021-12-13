@@ -28,6 +28,7 @@ VERSION_BASE=
 VERSION_FROM=
 IMAGE=
 RELEASE=
+ADDITIONAL_TAGS=()
 BUILD_LIST=()
 BUILD_TYPE="addon"
 BUILD_TASKS=()
@@ -81,6 +82,8 @@ Options:
         Additional version information like for base images.
     --release-tag
         Use this as main tag.
+    --additional-tag
+        Add additional tags that will be published
     --version-from <VERSION>
         Use this to set build_from tag if not specified.
 
@@ -291,6 +294,11 @@ function run_build() {
     if bashio::var.true "${DOCKER_LATEST}"; then
         docker_tags+=("latest")
     fi
+
+    # Add additional tags
+    for tag_image in "${ADDITIONAL_TAGS[@]}"; do
+        docker_tags+=("${tag_image}")
+    done
 
     # Tag images
     for tag_image in "${docker_tags[@]}"; do
@@ -811,6 +819,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --test)
             DOCKER_PUSH=false
+            ;;
+        --additional-tag)
+            ADDITIONAL_TAGS+=("$2")
+            shift
             ;;
         --no-cache)
             DOCKER_CACHE=false

@@ -86,6 +86,8 @@ Options:
         Additional version information like for base images.
     --release-tag
         Use this as main tag.
+    --additional-tag
+        Add additional tags that will be published
     --version-from <VERSION>
         Use this to set build_from tag if not specified.
   Architecture
