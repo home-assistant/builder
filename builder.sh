@@ -591,6 +591,7 @@ function build_machine() {
     local build_machine=$1
     local build_arch=$2
 
+    local version_tag=false
     local args=
     local image=
     local repository=
@@ -608,6 +609,7 @@ function build_machine() {
         args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
         labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
         raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
+        version_tag="$(jq --raw-output '.version_tag // false' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
         codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
         codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
@@ -649,6 +651,17 @@ function build_machine() {
 
     # Set labels
     docker_cli+=("--label" "io.hass.machine=${build_machine}")
+
+    # Version Tag
+    if bashio::var.true "${version_tag}"; then
+        if [[ "${VERSION}" =~ d ]]; then
+            docker_tags+=("dev")
+        elif [[ "${VERSION}" =~ b ]]; then
+            docker_tags+=("beta")
+        else
+            docker_tags+=("stable")
+        fi
+    fi
 
     # Start build
     run_build "${TARGET}" "${repository}" "${image}" "${VERSION}" \
