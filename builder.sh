@@ -916,6 +916,13 @@ mkdir -p /data
 init_crosscompile
 start_docker
 
+# Load external repository
+if [ -n "$GIT_REPOSITORY" ]; then
+    bashio::log.info "Checkout repository $GIT_REPOSITORY"
+    git clone --depth 1 --branch "$GIT_BRANCH" "$GIT_REPOSITORY" /data/git 2> /dev/null
+    TARGET="/data/git/$TARGET"
+fi
+
 # Convert configuration files to json if needed
 convert_to_json
 
@@ -927,13 +934,6 @@ if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASSWORD" ]; then
   docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
 fi
 codenotary_setup
-
-# Load external repository
-if [ -n "$GIT_REPOSITORY" ]; then
-    bashio::log.info "Checkout repository $GIT_REPOSITORY"
-    git clone --depth 1 --branch "$GIT_BRANCH" "$GIT_REPOSITORY" /data/git 2> /dev/null
-    TARGET="/data/git/$TARGET"
-fi
 
 # Select arch build
 if [ "${#BUILD_LIST[@]}" -ne 0 ]; then
