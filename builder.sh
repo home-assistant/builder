@@ -38,6 +38,7 @@ BUILD_TYPE="addon"
 BUILD_TASKS=()
 BUILD_ERROR=()
 declare -A BUILD_MACHINE=(
+                          [generic-aarch64]="aarch64" \
                           [generic-x86-64]="amd64" \
                           [intel-nuc]="amd64" \
                           [khadas-vim3]="aarch64" \
