@@ -229,6 +229,16 @@ function run_build() {
     # shellcheck disable=SC1117
     image="$(echo "${image}" | sed -r "s/\{arch\}/${build_arch}/g")"
 
+    # Set docker platform from build arch
+    case "${build_arch}" in
+        armhf)      docker_platform="linux/arm/v6" ;;
+        armv7)      docker_platform="linux/arm/v7" ;;
+        amd64)      docker_platform="linux/amd64" ;;
+        i386)       docker_platform="linux/386" ;;
+        aarch64)    docker_platform="linux/arm64" ;;
+        *)          bashio::exit.nok "Recived unknown architecture ${build_arch}" ;;
+    esac
+
     # Check if image exists on docker hub
     if bashio::var.true "$DOCKER_HUB_CHECK"; then
         metadata="$(curl -s "https://hub.docker.com/v2/repositories/${repository}/${image}/tags/${version}/")"
@@ -250,7 +260,10 @@ function run_build() {
         fi
 
         bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag}"
-        if docker pull "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 && codenotary_validate "${codenotary_sign}" "${repository}/${image}:${cache_tag}" "false"; then
+        if \
+            docker pull "${repository}/${image}:${cache_tag}" --platform "${docker_platform}" > /dev/null 2>&1 \
+            && codenotary_validate "${codenotary_sign}" "${repository}/${image}:${cache_tag}" "false" "${docker_platform}" \
+        ; then
             docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
         else
             docker_cli+=("--no-cache")
@@ -267,13 +280,14 @@ function run_build() {
     docker_cli+=("--label" "org.opencontainers.image.version=${release}")
 
     # Validate the base image
-    if ! codenotary_validate "${codenotary_base}" "${build_from}" "true"; then
+    if ! codenotary_validate "${codenotary_base}" "${build_from}" "true" "${docker_platform}"; then
         bashio::exit.nok "Invalid base image ${build_from}"
     fi
 
     # Build image
     bashio::log.info "Run build for ${repository}/${image}:${version}"
     docker build --pull -t "${repository}/${image}:${version}" \
+        --platform "${docker_platform}" \
         --build-arg "BUILD_FROM=${build_from}" \
         --build-arg "BUILD_VERSION=${version}" \
         --build-arg "BUILD_ARCH=${build_arch}" \
@@ -746,6 +760,7 @@ function codenotary_validate() {
     local trust=$1
     local image=$2
     local pull=$3
+    local platform=$4
     local success=false
 
     if ! bashio::var.has_value "${trust}"; then
@@ -754,7 +769,7 @@ function codenotary_validate() {
 
     if bashio::var.true "${pull}"; then
         bashio::log.info "Download image ${image} for CodeNotary validation"
-        docker pull "${image}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
+        docker pull "${image}" --platform "${platform}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
     fi
 
     for j in {1..15}; do
