@@ -259,7 +259,7 @@ function run_build() {
             cache_tag="${version}"
         fi
 
-        bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag}"
+        bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag} and platform ${docker_platform}"
         if \
             docker pull "${repository}/${image}:${cache_tag}" --platform "${docker_platform}" > /dev/null 2>&1 \
             && codenotary_validate "${codenotary_sign}" "${repository}/${image}:${cache_tag}" "false" "${docker_platform}" \
@@ -285,7 +285,7 @@ function run_build() {
     fi
 
     # Build image
-    bashio::log.info "Run build for ${repository}/${image}:${version}"
+    bashio::log.info "Run build for ${repository}/${image}:${version} with platform ${docker_platform}"
     docker build --pull -t "${repository}/${image}:${version}" \
         --platform "${docker_platform}" \
         --build-arg "BUILD_FROM=${build_from}" \
