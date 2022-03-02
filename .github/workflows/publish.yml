@@ -18,7 +18,7 @@ jobs:
       architectures: ${{ steps.info.outputs.architectures }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3
 
       - name: Get information
         id: info
@@ -34,7 +34,7 @@ jobs:
         architecture: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3
 
       - uses: olegtarasov/get-tag@v2.1
         if: github.event_name == 'release'
