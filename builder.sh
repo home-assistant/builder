@@ -239,6 +239,11 @@ function run_build() {
         *)          bashio::exit.nok "Recived unknown architecture ${build_arch}" ;;
     esac
 
+    # Adjust Qemu CPU
+    if [ "${build_arch}" == "armhf" ]; then
+        docker_cli+=("-e" "QEMU_CPU=arm1176")
+    fi
+
     # Check if image exists on docker hub
     if bashio::var.true "$DOCKER_HUB_CHECK"; then
         metadata="$(curl -s "https://hub.docker.com/v2/repositories/${repository}/${image}/tags/${version}/")"
