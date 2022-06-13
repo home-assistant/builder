@@ -260,8 +260,10 @@ function run_build() {
         fi
 
         bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag} and platform ${docker_platform}"
+        docker pull "${repository}/${image}:${cache_tag}" --platform "${docker_platform}" > /dev/null 2>&1 || true
+
         if \
-            docker pull "${repository}/${image}:${cache_tag}" --platform "${docker_platform}" > /dev/null 2>&1 \
+            docker image inspect "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 \
             && codenotary_validate "${codenotary_sign}" "${repository}/${image}:${cache_tag}" "false" "${docker_platform}" \
         ; then
             docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
