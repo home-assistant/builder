@@ -241,7 +241,7 @@ function run_build() {
 
     # Adjust Qemu CPU
     if bashio::var.equals "${build_arch}" armhf; then
-        docker_cli+=("-e" "QEMU_CPU=arm1176")
+        docker_cli+=("--build-arg" "QEMU_CPU=arm1176")
     fi
 
     # Check if image exists on docker hub
