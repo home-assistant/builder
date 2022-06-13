@@ -240,7 +240,7 @@ function run_build() {
     esac
 
     # Adjust Qemu CPU
-    if [ "${build_arch}" == "armhf" ]; then
+    if bashio::var.equals "${build_arch}" armhf; then
         docker_cli+=("-e" "QEMU_CPU=arm1176")
     fi
 
