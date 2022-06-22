@@ -770,6 +770,11 @@ function codenotary_validate() {
     local platform=$4
     local success=false
 
+    if [ "$image" == "scratch" ]; then
+        bashio::log.info "Scratch image, skiping CodeNotary validation"
+        return 0
+    fi
+
     if ! bashio::var.has_value "${trust}"; then
         return 0
     fi
