@@ -20,7 +20,6 @@ DOCKER_LOCAL=false
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
 RELEASE_TAG=false
-BUILDX=false
 GIT_REPOSITORY=
 GIT_BRANCH="master"
 TARGET=
@@ -108,8 +107,6 @@ Options:
        Disable push to dockerhub.
     --no-latest
        Do not tag images as latest.
-    --buildx
-      Use buildx to build the image
     --no-cache
        Disable cache for the build (from latest).
     --self-cache
@@ -295,16 +292,9 @@ function run_build() {
         bashio::exit.nok "Invalid base image ${build_from}"
     fi
 
-    if bashio::var.true "${BUILDX}"; then
-        bashio::log.info "Using buildx"
-        build_cmd="docker buildx build"
-    else
-        build_cmd="docker build"
-    fi
-
     # Build image
     bashio::log.info "Run build for ${repository}/${image}:${version} with platform ${docker_platform}"
-    ${build_cmd} --pull -t "${repository}/${image}:${version}" \
+    docker buildx build --pull -t "${repository}/${image}:${version}" \
         --platform "${docker_platform}" \
         --build-arg "BUILD_FROM=${build_from}" \
         --build-arg "BUILD_VERSION=${version}" \
@@ -857,9 +847,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --test)
             DOCKER_PUSH=false
-            ;;
-        --buildx)
-            BUILDX=true
             ;;
         --additional-tag)
             ADDITIONAL_TAGS+=("$2")
