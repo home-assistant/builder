@@ -110,6 +110,8 @@ Options:
        Do not tag images as latest.
     --no-cache
        Disable cache for the build (from latest).
+    --buildx
+      Use buildx to build the image
     --self-cache
        Use same tag as cache tag instead latest.
     --cache-tag <TAG>

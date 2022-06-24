@@ -11,6 +11,7 @@ RUN \
     && apk add --no-cache \
         git \
         docker \
+        docker-cli-buildx \
         coreutils \
     && apk add --no-cache --virtual .build-dependencies \
         build-base \
