@@ -124,6 +124,8 @@ Options:
        Password to login into docker with
     Use the host docker socket if mapped into container:
        /var/run/docker.sock
+    --disable-buildx
+       Disables buildx
   Internals:
     --addon
         Default on. Run all things for an addon build.
