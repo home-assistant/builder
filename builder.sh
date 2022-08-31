@@ -19,6 +19,7 @@ DOCKER_PASSWORD=
 DOCKER_LOCAL=false
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
+DISABLE_BUILDX=true
 RELEASE_TAG=false
 GIT_REPOSITORY=
 GIT_BRANCH="master"
@@ -121,6 +122,8 @@ Options:
        Username to login into docker with
     --docker-password <PASSWORD>
        Password to login into docker with
+    --disable-buildx
+       Disables buildx
 
     Use the host docker socket if mapped into container:
        /var/run/docker.sock
@@ -281,6 +284,12 @@ function run_build() {
         docker_cli+=("--no-cache")
     fi
 
+    # Build Command
+    build_cmd="buildx build"
+    if bashio::var.true "${DISABLE_BUILDX}"; then
+        build_cmd="build"
+    fi
+
     # Set Labels
     docker_cli+=("--label" "io.hass.arch=${build_arch}")
     docker_cli+=("--label" "org.opencontainers.image.created=$(date --rfc-3339=seconds --utc)")
@@ -294,7 +303,7 @@ function run_build() {
 
     # Build image
     bashio::log.info "Run build for ${repository}/${image}:${version} with platform ${docker_platform}"
-    docker buildx build --pull -t "${repository}/${image}:${version}" \
+    docker ${build_cmd} --pull -t "${repository}/${image}:${version}" \
         --platform "${docker_platform}" \
         --build-arg "BUILD_FROM=${build_from}" \
         --build-arg "BUILD_VERSION=${version}" \
@@ -864,6 +873,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --release-tag)
             RELEASE_TAG=true
+            ;;
+        --disable-buildx)
+            DISABLE_BUILDX=true
             ;;
         -d|--docker-hub)
             DOCKER_HUB=$2
