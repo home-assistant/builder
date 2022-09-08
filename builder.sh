@@ -436,8 +436,8 @@ function build_base() {
         bashio::log.error "Can't find the image tag on build.json"
         return 1
     fi
-    repository="$(echo "${raw_image}" | cut -f 1 -d '/')"
-    image="$(echo "${raw_image}" | cut -f 2 -d '/')"
+    repository="${raw_image%/*}"
+    image="${raw_image##*/}"
 
     # Additional build args
     if bashio::var.has_value "${args}"; then
@@ -535,8 +535,8 @@ function build_addon() {
 
     # Read data from image
     if [ -n "$raw_image" ]; then
-        repository="$(echo "$raw_image" | cut -f 1 -d '/')"
-        image="$(echo "$raw_image" | cut -f 2 -d '/')"
+        repository="${raw_image%/*}"
+        image="${raw_image##*/}"
     fi
 
     # Set additional labels
@@ -654,8 +654,8 @@ function build_machine() {
         docker_cli+=("--file" "${TARGET}/${build_machine}")
     fi
 
-    repository="$(echo "${raw_image}" | cut -f 1 -d '/')"
-    image="$(echo "${raw_image}" | cut -f 2 -d '/')"
+    repository="${raw_image%/*}"
+    image="${raw_image##*/}"
 
     # Replace {machine} with build machine for image
     # shellcheck disable=SC1117
