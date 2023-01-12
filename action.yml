@@ -15,7 +15,7 @@ runs:
         if [[ "${input}" == "master" ]] || [[ -z "${input}" ]]; then
           input="latest"
         fi
-        echo "::set-output name=version::${input}"
+        echo "version=${input}" >> "$GITHUB_OUTPUT"
 
     - uses: home-assistant/actions/helpers/cas@master
 
@@ -39,7 +39,7 @@ runs:
       id: builder
       run: |
         builder=$(docker images ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} -q)
-        echo "::set-output name=id::$builder"
+        echo "id=$builder" >> "$GITHUB_OUTPUT"
 
     - shell: bash
       id: build
