@@ -19,6 +19,7 @@ DOCKER_PASSWORD=
 DOCKER_LOCAL=false
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
+COSIGN=false
 RELEASE_TAG=false
 GIT_REPOSITORY=
 GIT_BRANCH="master"
@@ -137,8 +138,8 @@ Options:
         Build the machine based image for a release/landingpage.
 
   Security:
-    Enable signing images with Codenotary. Need set follow env:
-    - CAS_API_KEY
+    --cosign
+        Enable signing images with cosign.
 EOF
 
     bashio::exit.nok
@@ -349,7 +350,7 @@ function run_build() {
         push_images+=("${shadow_repository}/${image}:${version}")
     fi
 
-    # Singing image
+    # Singing image (cas)
     codenotary_sign "${codenotary_sign}" "${repository}/${image}:${version}"
 
     # Push images
@@ -370,6 +371,9 @@ function run_build() {
             done
         done
     fi
+
+    # Singing image (cosign)
+    cosign_sign "${repository}/${image}:${version}"
 }
 
 function convert_to_json() {
@@ -767,9 +771,9 @@ function codenotary_sign() {
     done
 
     if bashio::var.false "${success}"; then
-        bashio::exit.nok "Failed to sign the image"
+        bashio::exit.nok "Failed to sign the image (cas)"
     fi
-    bashio::log.info "Signed ${image} with ${trust}"
+    bashio::log.info "Signed ${image} with ${trust} (cas)"
 }
 
 function codenotary_validate() {
@@ -807,6 +811,32 @@ function codenotary_validate() {
         return 1
     fi
     bashio::log.info "Image ${image} is trusted"
+}
+
+
+#### Security cosign ####
+
+function cosign_sign() {
+    local image=$1
+
+    local success=false
+
+    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${COSIGN}"; then
+        return 0
+    fi
+    
+    for j in {1..15}; do
+        if cosign sign --yes "${image}"; then
+            success=true
+            break
+        fi
+        sleep $((5 * j))
+    done
+
+    if bashio::var.false "${success}"; then
+        bashio::exit.nok "Failed to sign the image (cosign)"
+    fi
+    bashio::log.info "Signed ${image} with ${trust} (cosign)"
 }
 
 
@@ -865,6 +895,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --self-cache)
             SELF_CACHE=true
+            ;;
+        --cosign)
+            COSIGN=true
             ;;
         --cache-tag)
             CUSTOM_CACHE_TAG=$2
