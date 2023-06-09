@@ -17,23 +17,9 @@ runs:
         fi
         echo "version=${input}" >> "$GITHUB_OUTPUT"
 
-    - uses: home-assistant/actions/helpers/cas@master
-
     - shell: bash
       run: |
         docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
-
-    - shell: bash
-      run: |
-        for j in {1..15}; do
-          if CAS_API_KEY= cas authenticate --silent --signerID notary@home-assistant.io docker://ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}; then
-            exit 0
-          fi
-          sleep $((5 * j))
-        done
-
-        echo "Invalid signature!"
-        exit 1
 
     - shell: bash
       id: builder
