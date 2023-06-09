@@ -603,8 +603,8 @@ function build_generic() {
         bashio::log.error "Can't find the image tag on build.json"
         return 1
     fi
-    repository="$(echo "$raw_image" | cut -f 1 -d '/')"
-    image="$(echo "$raw_image" | cut -f 2 -d '/')"
+    repository="${raw_image%/*}"
+    image="${raw_image##*/}"
 
     # Additional build args
     if bashio::var.has_value "$args"; then

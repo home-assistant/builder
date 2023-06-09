@@ -1,4 +1,5 @@
-image: "ghcr.io/home-assistant/{arch}-builder"
+image: "homeassistant/{arch}-builder"
+shadow_repository: "ghcr.io/home-assistant"
 build_from:
   aarch64: "ghcr.io/home-assistant/aarch64-base:3.18"
   armv7: "ghcr.io/home-assistant/armv7-base:3.18"
