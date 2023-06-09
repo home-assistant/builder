@@ -817,7 +817,7 @@ function codenotary_validate() {
 #### Security cosign ####
 
 function cosign_sign() {
-    local image=$2
+    local image=$1
 
     local success=false
 
