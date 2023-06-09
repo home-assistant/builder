@@ -12,6 +12,7 @@ codenotary:
 args:
   CAS_VERSION: "1.0.1"
   YQ_VERSION: "v4.13.2"
+  COSIGN_VERSION: "2.0.2"
 labels:
   io.hass.type: builder
   org.opencontainers.image.title: "Home Assistant Builder"
