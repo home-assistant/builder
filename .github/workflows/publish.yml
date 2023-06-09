@@ -31,6 +31,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      packages: write
     strategy:
       fail-fast: False
       matrix:
@@ -62,7 +63,6 @@ jobs:
           args: |
             --${{ matrix.architecture }} \
             --target /data \
-            --cosign \
             --generic $GIT_TAG_NAME
         env:
           CAS_API_KEY: ${{ secrets.CAS_TOKEN }}
