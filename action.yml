@@ -11,7 +11,7 @@ runs:
     - name: Install Cosign
       uses: sigstore/cosign-installer@v3.0.5
       with:
-        cosign-release: 'v2.0.2'
+        cosign-release: "v2.0.2"
 
     - shell: bash
       id: version
@@ -27,7 +27,7 @@ runs:
         docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
         cosign verify \
           --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-          --certificate-oidc-issuer-regexp https://github.com/home-assistant/builder/.* \
+          --certificate-identity-regexp https://github.com/home-assistant/builder/.* \
           ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
 
     - shell: bash
