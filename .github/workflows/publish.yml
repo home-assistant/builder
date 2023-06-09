@@ -61,7 +61,6 @@ jobs:
         with:
           args: |
             --${{ matrix.architecture }} \
-            --cosign \
             --target /data \
             --generic $GIT_TAG_NAME
         env:
