@@ -287,7 +287,7 @@ function run_build() {
 
         if \
             docker image inspect "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 \
-            && cosign_validate "${cosign_issuer}" "${cosign_identity}" "${repository}/${image}:${cache_tag}" "${docker_platform}" "false" \
+            && cosign_verify "${cosign_issuer}" "${cosign_identity}" "${repository}/${image}:${cache_tag}" "${docker_platform}" "false" \
         ; then
             docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
         else
@@ -305,7 +305,7 @@ function run_build() {
     docker_cli+=("--label" "org.opencontainers.image.version=${release}")
 
     # Validate the base image
-    if ! cosign_validate "${cosign_base_issuer}" "${cosign_base_identity}" "${build_from}" "${docker_platform}" "true"; then
+    if ! cosign_verify "${cosign_base_issuer}" "${cosign_base_identity}" "${build_from}" "${docker_platform}" "true"; then
         bashio::exit.nok "Invalid base image ${build_from}"
     fi
 
