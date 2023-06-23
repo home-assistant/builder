@@ -809,7 +809,7 @@ function cosign_verify() {
 
     # Support scratch image
     if [ "$image" == "scratch" ]; then
-        bashio::log.info "Scratch image, skiping cosign validation"
+        bashio::log.info "Scratch image, skiping validation (cosign)"
         return 0
     fi
 
@@ -835,6 +835,9 @@ function cosign_verify() {
 
     if bashio::var.false "${success}"; then
         bashio::log.warning "Validation of ${image} fails (cosign)!"
+        if bashio::var.true "${pull}"; then
+            docker rmi "${image}" > /dev/null 2>&1 || true
+        fi
         return 1
     fi
     bashio::log.info "Image ${image} is trusted (cosign)"
