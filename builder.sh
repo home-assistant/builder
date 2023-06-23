@@ -798,12 +798,11 @@ function cosign_sign() {
 }
 
 function cosign_verify() {
-    local image=$1
-    local issuer=$2
-    local identity=$3
-    local image=$4
-    local platform=$5
-    local pull=$6
+    local issuer=$1
+    local identity=$2
+    local image=$3
+    local platform=$4
+    local pull=$5
 
     local success=false
 
