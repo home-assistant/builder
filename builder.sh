@@ -249,9 +249,9 @@ function run_build() {
     # Read build.json / cosign
     if bashio::fs.file_exists "/tmp/build_config/build.json"; then
         cosign_base_identity="$(jq --raw-output '.cosign.base_identity // empty' "/tmp/build_config/build.json")"
-        cosign_base_issuer="$(jq --raw-output '.cosign.base_issuer // empty' "/tmp/build_config/build.json")"
+        cosign_base_issuer="$(jq --raw-output '.cosign.base_issuer // "https://token.actions.githubusercontent.com"' "/tmp/build_config/build.json")"
         cosign_identity="$(jq --raw-output '.cosign.identity // empty' "/tmp/build_config/build.json")"
-        cosign_issuer="$(jq --raw-output '.cosign.issuer // empty' "/tmp/build_config/build.json")"
+        cosign_issuer="$(jq --raw-output '.cosign.issuer // "https://token.actions.githubusercontent.com"' "/tmp/build_config/build.json")"
 
         # remove later
         codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"

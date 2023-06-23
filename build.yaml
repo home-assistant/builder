@@ -9,9 +9,7 @@ codenotary:
   signer: notary@home-assistant.io
   base_image: notary@home-assistant.io
 cosign:
-  base_issuer: https://token.actions.githubusercontent.com
   base_identity: https://github.com/home-assistant/docker-base/.*
-  issuer: https://token.actions.githubusercontent.com
   identity: https://github.com/home-assistant/builder/.*
 args:
   CAS_VERSION: "1.0.1"
