@@ -215,14 +215,17 @@ function run_build() {
     local docker_cli=("${!7}")
     local docker_tags=("${!8}")
     local shadow_repository=${9}
-    local codenotary_base=${10}
-    local codenotary_sign=${11}
 
     local push_images=()
     local cache_tag="latest"
     local metadata
     local release="${version}"
     local dockerfile="${build_dir}/Dockerfile"
+    local cosign_base_identity=
+    local cosign_base_issuer=
+    local cosign_identity=
+    local cosign_issuer=
+    local codenotary_sign=
 
     # Overwrites
     if bashio::var.has_value "${DOCKER_HUB}"; then repository="${DOCKER_HUB@L}"; fi
@@ -242,6 +245,17 @@ function run_build() {
         aarch64)    docker_platform="linux/arm64" ;;
         *)          bashio::exit.nok "Recived unknown architecture ${build_arch}" ;;
     esac
+
+    # Read build.json / cosign
+    if bashio::fs.file_exists "/tmp/build_config/build.json"; then
+        cosign_base_identity="$(jq --raw-output '.cosign.base_identity // empty' "/tmp/build_config/build.json")"
+        cosign_base_issuer="$(jq --raw-output '.cosign.base_issuer // "https://token.actions.githubusercontent.com"' "/tmp/build_config/build.json")"
+        cosign_identity="$(jq --raw-output '.cosign.identity // empty' "/tmp/build_config/build.json")"
+        cosign_issuer="$(jq --raw-output '.cosign.issuer // "https://token.actions.githubusercontent.com"' "/tmp/build_config/build.json")"
+
+        # remove later
+        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
+    fi
 
     # Adjust Qemu CPU
     if bashio::var.equals "${build_arch}" armhf; then
@@ -273,7 +287,7 @@ function run_build() {
 
         if \
             docker image inspect "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 \
-            && codenotary_validate "${codenotary_sign}" "${repository}/${image}:${cache_tag}" "false" "${docker_platform}" \
+            && cosign_validate "${cosign_issuer}" "${cosign_identity}" "${repository}/${image}:${cache_tag}" "${docker_platform}" "false" \
         ; then
             docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
         else
@@ -291,7 +305,7 @@ function run_build() {
     docker_cli+=("--label" "org.opencontainers.image.version=${release}")
 
     # Validate the base image
-    if ! codenotary_validate "${codenotary_base}" "${build_from}" "true" "${docker_platform}"; then
+    if ! cosign_validate "${cosign_base_issuer}" "${cosign_base_identity}" "${build_from}" "${docker_platform}" "true"; then
         bashio::exit.nok "Invalid base image ${build_from}"
     fi
 
@@ -411,8 +425,6 @@ function build_base() {
     local shadow_repository=
     local raw_image=
     local args=
-    local codenotary_base=
-    local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
 
@@ -423,8 +435,6 @@ function build_base() {
         labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
         raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
-        codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
-        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Set defaults build things
@@ -480,8 +490,7 @@ function build_base() {
 
     # Start build
     run_build "${TARGET}" "${repository}" "${image}" "${VERSION_BASE}" \
-        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}" \
-        "${codenotary_base}" "${codenotary_sign}"
+        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}"
 }
 
 
@@ -498,8 +507,6 @@ function build_addon() {
     local description=
     local url=
     local args=
-    local codenotary_base=
-    local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
 
@@ -508,8 +515,6 @@ function build_addon() {
         build_from="$(jq --raw-output ".build_from.$build_arch // empty" "/tmp/build_config/build.json")"
         args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
-        codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
-        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Set defaults build things
@@ -562,8 +567,7 @@ function build_addon() {
 
     # Start build
     run_build "$TARGET" "$repository" "$image" "$version" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}" \
-        "${codenotary_base}" "${codenotary_sign}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}"
 }
 
 
@@ -576,7 +580,6 @@ function build_generic() {
     local shadow_repository=
     local raw_image=
     local args=
-    local codenotary_base=
     local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
@@ -588,7 +591,6 @@ function build_generic() {
         labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
         raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
-        codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
         codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
@@ -624,8 +626,7 @@ function build_generic() {
 
     # Start build
     run_build "$TARGET" "$repository" "$image" "$VERSION" \
-        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}" \
-        "${codenotary_base}" "${codenotary_sign}"
+        "$build_from" "$build_arch" docker_cli[@] docker_tags[@] "${shadow_repository}"
 }
 
 
@@ -639,8 +640,6 @@ function build_machine() {
     local raw_image=
     local build_from=
     local shadow_repository=
-    local codenotary_base=
-    local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
 
@@ -651,8 +650,6 @@ function build_machine() {
         labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
         raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
-        codenotary_base="$(jq --raw-output '.codenotary.base_image // empty' "/tmp/build_config/build.json")"
-        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Modify build_from
@@ -694,8 +691,7 @@ function build_machine() {
 
     # Start build
     run_build "${TARGET}" "${repository}" "${image}" "${VERSION}" \
-        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}" \
-        "${codenotary_base}" "${codenotary_sign}"
+        "${build_from}" "${build_arch}" docker_cli[@] docker_tags[@] "${shadow_repository}"
 }
 
 
@@ -776,44 +772,6 @@ function codenotary_sign() {
     bashio::log.info "Signed ${image} with ${trust} (cas)"
 }
 
-function codenotary_validate() {
-    local trust=$1
-    local image=$2
-    local pull=$3
-    local platform=$4
-    local success=false
-
-    if [ "$image" == "scratch" ]; then
-        bashio::log.info "Scratch image, skiping CodeNotary validation"
-        return 0
-    fi
-
-    if ! bashio::var.has_value "${trust}"; then
-        return 0
-    fi
-
-    if bashio::var.true "${pull}"; then
-        bashio::log.info "Download image ${image} for CodeNotary validation"
-        docker pull "${image}" --platform "${platform}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
-    fi
-
-    for j in {1..15}; do
-        # shellcheck disable=SC1007
-        if CAS_API_KEY= cas authenticate --signerID "${trust}" --silent "docker://${image}" ; then
-            success=true
-            break
-        fi
-        sleep $((5 * j))
-    done
-
-    if bashio::var.false "${success}"; then
-        bashio::log.warning "Validation of ${image} fails!"
-        return 1
-    fi
-    bashio::log.info "Image ${image} is trusted"
-}
-
-
 #### Security cosign ####
 
 function cosign_sign() {
@@ -825,7 +783,7 @@ function cosign_sign() {
         return 0
     fi
     
-    for j in {1..15}; do
+    for j in {1..6}; do
         if cosign sign --yes "${image}"; then
             success=true
             break
@@ -837,6 +795,52 @@ function cosign_sign() {
         bashio::exit.nok "Failed to sign the image (cosign)"
     fi
     bashio::log.info "Signed ${image} with ${trust} (cosign)"
+}
+
+function cosign_verify() {
+    local image=$1
+    local issuer=$2
+    local identity=$3
+    local image=$4
+    local platform=$5
+    local pull=$6
+
+    local success=false
+
+    # Support scratch image
+    if [ "$image" == "scratch" ]; then
+        bashio::log.info "Scratch image, skiping validation (cosign)"
+        return 0
+    fi
+
+    # Nothing to validate against
+    if ! bashio::var.has_value "${issuer}" || ! bashio::var.has_value "${identity}" ; then
+        return 0
+    fi
+
+    # Pull image if needed
+    if bashio::var.true "${pull}"; then
+        bashio::log.info "Download image ${image} for cosign validation"
+        docker pull "${image}" --platform "${platform}" > /dev/null 2>&1 || bashio::exit.nok "Can't pull image ${image}"
+    fi
+
+    # validate image
+    for j in {1..6}; do
+        if cosign verify --certificate-oidc-issuer-regexp "${issuer}" --certificate-identity-regexp "${identity}" "${image}"; then
+            success=true
+            break
+        fi
+        sleep $((5 * j))
+    done
+
+    if bashio::var.false "${success}"; then
+        bashio::log.warning "Validation of ${image} fails (cosign)!"
+        if bashio::var.true "${pull}"; then
+            docker rmi "${image}" > /dev/null 2>&1 || true
+        fi
+        return 1
+    fi
+    bashio::log.info "Image ${image} is trusted (cosign)"
 }
 
 
