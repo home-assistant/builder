@@ -8,7 +8,22 @@ You can use this repository as a GitHub action to test and/or publish your build
 
 Use the `with.args` key to pass in arguments to the builder, to see what arguments are supported you can look at the [arguments](#Arguments) section.
 
-For [CAS](https://cas.codenotary.com/) support, add `env.CAS_API_KEY` which would allow you to use the `codenotary` properties from `build` configs.
+### Cosign support
+
+You can use cosign to signing and verify the build chain. To sign the image, use `--cosign` and attach following options to the github action:
+
+```yaml
+jobs:
+  build:
+    name: Test build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+```
+
+For keep a trust-chain during the built, you need set `identity` and `base_identity` to your build.yml
 
 ### Test action example
 
@@ -70,6 +85,7 @@ jobs:
 Options:
   -h, --help
         Display this help and exit.
+
   Repository / Data
     -r, --repository <REPOSITORY>
         Set git repository to load data from.
@@ -77,6 +93,7 @@ Options:
         Set git branch for repository.
     -t, --target <PATH_TO_BUILD>
         Set local folder or path inside repository for build.
+
   Version/Image handling
     -v, --version <VERSION>
         Overwrite version/tag of build.
@@ -90,6 +107,7 @@ Options:
         Add additional tags that will be published
     --version-from <VERSION>
         Use this to set build_from tag if not specified.
+
   Architecture
     --armhf
         Build for arm v6.
@@ -103,6 +121,7 @@ Options:
         Build for intel/amd 32bit.
     --all
         Build all architecture.
+
   Build handling
     --test
        Disable push to dockerhub.
@@ -122,8 +141,10 @@ Options:
        Username to login into docker with
     --docker-password <PASSWORD>
        Password to login into docker with
+
     Use the host docker socket if mapped into container:
        /var/run/docker.sock
+
   Internals:
     --addon
         Default on. Run all things for an addon build.
@@ -133,9 +154,10 @@ Options:
         Build our base images.
     --machine <VERSION=ALL,X,Y>
         Build the machine based image for a release/landingpage.
+
   Security:
-    Enable signing images with Codenotary. Need set follow env:
-    - CAS_API_KEY
+    --cosign
+        Enable signing images with cosign.
 ```
 
 ## Local installation
