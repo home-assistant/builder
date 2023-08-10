@@ -54,6 +54,7 @@ declare -A BUILD_MACHINE=(
                           [raspberrypi4]="armv7" \
                           [raspberrypi4-64]="aarch64" \
                           [yellow]="aarch64" \
+                          [green]="aarch64" \
                           [tinker]="armv7" )
 
 
