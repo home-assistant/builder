@@ -742,9 +742,9 @@ function cosign_sign() {
     done
 
     if bashio::var.false "${success}"; then
-        bashio::exit.nok "Failed to sign the image (cosign)"
+        bashio::exit.nok "Failed to sign the image with cosign"
     fi
-    bashio::log.info "Signed ${image} with ${trust} (cosign)"
+    bashio::log.info "Signed ${image} with cosign"
 }
 
 function cosign_verify() {
@@ -758,7 +758,7 @@ function cosign_verify() {
 
     # Support scratch image
     if [ "$image" == "scratch" ]; then
-        bashio::log.info "Scratch image, skiping validation (cosign)"
+        bashio::log.info "Scratch image, skiping validation with cosign"
         return 0
     fi
 
@@ -783,13 +783,13 @@ function cosign_verify() {
     done
 
     if bashio::var.false "${success}"; then
-        bashio::log.warning "Validation of ${image} fails (cosign)!"
+        bashio::log.warning "Validation of ${image} fails with cosign!"
         if bashio::var.true "${pull}"; then
             docker rmi "${image}" > /dev/null 2>&1 || true
         fi
         return 1
     fi
-    bashio::log.info "Image ${image} is trusted (cosign)"
+    bashio::log.info "Image ${image} is trusted by cosign"
 }
 
 
