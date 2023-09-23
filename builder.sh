@@ -226,7 +226,6 @@ function run_build() {
     local cosign_base_issuer=
     local cosign_identity=
     local cosign_issuer=
-    local codenotary_sign=
 
     # Overwrites
     if bashio::var.has_value "${DOCKER_HUB}"; then repository="${DOCKER_HUB@L}"; fi
@@ -253,9 +252,6 @@ function run_build() {
         cosign_base_issuer="$(jq --raw-output '.cosign.base_issuer // "https://token.actions.githubusercontent.com"' "/tmp/build_config/build.json")"
         cosign_identity="$(jq --raw-output '.cosign.identity // empty' "/tmp/build_config/build.json")"
         cosign_issuer="$(jq --raw-output '.cosign.issuer // "https://token.actions.githubusercontent.com"' "/tmp/build_config/build.json")"
-
-        # remove later
-        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Adjust Qemu CPU
@@ -364,9 +360,6 @@ function run_build() {
         done
         push_images+=("${shadow_repository}/${image}:${version}")
     fi
-
-    # Singing image (cas)
-    codenotary_sign "${codenotary_sign}" "${repository}/${image}:${version}"
 
     # Push images
     if bashio::var.true "${DOCKER_PUSH}"; then
@@ -581,7 +574,6 @@ function build_generic() {
     local shadow_repository=
     local raw_image=
     local args=
-    local codenotary_sign=
     local docker_cli=()
     local docker_tags=()
 
@@ -592,7 +584,6 @@ function build_generic() {
         labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
         raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
-        codenotary_sign="$(jq --raw-output '.codenotary.signer // empty' "/tmp/build_config/build.json")"
     fi
 
     # Set defaults build things
@@ -730,48 +721,6 @@ function init_crosscompile() {
         > /dev/null 2>&1 || bashio::log.warning "Can't enable crosscompiling feature"
 }
 
-#### Security CodeNotary ####
-
-function codenotary_setup() {
-    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.is_empty "${CAS_API_KEY+x}"; then
-        return 0
-    fi
-
-    for j in {1..15}; do
-        if cas login > /dev/null 2>&1; then
-            return 0
-        fi
-        sleep $((5 * j))
-    done 
-        
-    bashio::exit.nok "Login to Codenotary fails!"
-}
-
-function codenotary_sign() {
-    local trust=$1
-    local image=$2
-
-    local success=false
-
-    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.is_empty "${CAS_API_KEY+x}"; then
-        return 0
-    fi
-    
-    for j in {1..15}; do
-        if ! cas authenticate --signerID "${trust}" --silent "docker://${image}"; then
-            cas notarize --ci-attr "docker://${image}" || true
-        else
-            success=true
-            break
-        fi
-        sleep $((5 * j))
-    done
-
-    if bashio::var.false "${success}"; then
-        bashio::exit.nok "Failed to sign the image (cas)"
-    fi
-    bashio::log.info "Signed ${image} with ${trust} (cas)"
-}
 
 #### Security cosign ####
 
@@ -793,9 +742,9 @@ function cosign_sign() {
     done
 
     if bashio::var.false "${success}"; then
-        bashio::exit.nok "Failed to sign the image (cosign)"
+        bashio::exit.nok "Failed to sign the image with cosign"
     fi
-    bashio::log.info "Signed ${image} with ${trust} (cosign)"
+    bashio::log.info "Signed ${image} with cosign"
 }
 
 function cosign_verify() {
@@ -809,7 +758,7 @@ function cosign_verify() {
 
     # Support scratch image
     if [ "$image" == "scratch" ]; then
-        bashio::log.info "Scratch image, skiping validation (cosign)"
+        bashio::log.info "Scratch image, skiping validation with cosign"
         return 0
     fi
 
@@ -834,13 +783,13 @@ function cosign_verify() {
     done
 
     if bashio::var.false "${success}"; then
-        bashio::log.warning "Validation of ${image} fails (cosign)!"
+        bashio::log.warning "Validation of ${image} fails with cosign!"
         if bashio::var.true "${pull}"; then
             docker rmi "${image}" > /dev/null 2>&1 || true
         fi
         return 1
     fi
-    bashio::log.info "Image ${image} is trusted (cosign)"
+    bashio::log.info "Image ${image} is trusted by cosign"
 }
 
 
@@ -1002,11 +951,10 @@ convert_to_json
 # Copy configuration files to tmp
 copy_config_tmp
 
-# Login into dockerhub & setup CodeNotary
+# Login into dockerhub
 if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASSWORD" ]; then
   docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
 fi
-codenotary_setup
 
 # Select arch build
 if [ "${#BUILD_LIST[@]}" -ne 0 ]; then

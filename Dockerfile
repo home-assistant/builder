@@ -3,7 +3,6 @@ FROM $BUILD_FROM
 
 ARG \
     BUILD_ARCH \
-    CAS_VERSION \
     YQ_VERSION \
     COSIGN_VERSION
 
@@ -14,15 +13,7 @@ RUN \
         docker \
         docker-cli-buildx \
         coreutils \
-    && apk add --no-cache --virtual .build-dependencies \
-        build-base \
-        go \
     \
-    && git clone -b v${CAS_VERSION} --depth 1 \
-        https://github.com/codenotary/cas \
-    && cd cas \
-    && make cas \
-    && mv cas /usr/bin/cas \
     && if [ "${BUILD_ARCH}" = "armhf" ] || [ "${BUILD_ARCH}" = "armv7" ]; then \
         wget -q -O /usr/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_arm"; \
         wget -q -O /usr/bin/cosign "https://github.com/home-assistant/cosign/releases/download/${COSIGN_VERSION}/cosign_armhf"; \
@@ -39,11 +30,7 @@ RUN \
         exit 1; \
     fi \
     && chmod +x /usr/bin/yq \
-    && chmod +x /usr/bin/cosign \
-    \
-    && apk del .build-dependencies \
-    && rm -rf /root/go /root/.cache \
-    && rm -rf /usr/src/cas
+    && chmod +x /usr/bin/cosign
 
 COPY builder.sh /usr/bin/
 
