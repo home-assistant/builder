@@ -165,19 +165,19 @@ Options:
 amd64:
 
 ```bash
-docker pull homeassistant/amd64-builder
+docker pull ghcr.io/home-assistant/amd64-builder:latest
 ```
 
-armv7/armhf:
+armv7:
 
 ```bash
-docker pull homeassistant/armv7-builder
+docker pull ghcr.io/home-assistant/armv7-builder:latest
 ```
 
 aarch64:
 
 ```bash
-docker pull homeassistant/aarch64-builder
+docker pull ghcr.io/home-assistant/aarch64-builder:latest
 ```
 
 ## Run
@@ -189,7 +189,7 @@ docker run \
 	--rm \
 	--privileged \
 	-v ~/.docker:/root/.docker \
-	homeassistant/amd64-builder \
+    ghcr.io/home-assistant/amd64-builder:latest \
 		--all \
 		-t addon-folder \
 		-r https://github.com/xy/addons \
@@ -204,7 +204,7 @@ docker run \
 	--privileged \
 	-v ~/.docker:/root/.docker \
 	-v /my_addon:/data \
-	homeassistant/amd64-builder \
+    ghcr.io/home-assistant/amd64-builder:latest \
 		--all \
 		-t /data
 ```
@@ -220,13 +220,36 @@ docker run \
 	-v ~/.docker:/root/.docker \
 	-v /var/run/docker.sock:/var/run/docker.sock:ro \
 	-v /my_addon:/data \
-	homeassistant/amd64-builder \
+    ghcr.io/home-assistant/amd64-builder:latest \
 		--all \
 		-t /data
+```
+
+### Using shell alias
+
+On Linux, it can be helpful to use a shell alias to run the builder from the
+current directory. E.g. by adding the following function to your `~/.bashrc`:
+
+```
+function builder() {
+	docker run \
+	  --rm \
+	  -it \
+	  --privileged \
+	  -v ${PWD}:/data \
+	  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+      ghcr.io/home-assistant/amd64-builder:latest --target /data $@
+}
+```
+
+This allows to build add-ons e.g. for a single architecture as follow:
+```
+$ cd /path/to/your/add-on
+$ builder --amd64 --docker-hub agners
 ```
 
 ## Help
 
 ```bash
-docker run --rm --privileged homeassistant/amd64-builder --help
+docker run --rm --privileged ghcr.io/home-assistant/amd64-builder:latest --help
 ```
