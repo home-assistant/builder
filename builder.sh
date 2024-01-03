@@ -227,6 +227,7 @@ function run_build() {
     local cosign_base_issuer=
     local cosign_identity=
     local cosign_issuer=
+    local docker_wrapper=""
 
     # Overwrites
     if bashio::var.has_value "${DOCKER_HUB}"; then repository="${DOCKER_HUB@L}"; fi
@@ -258,6 +259,12 @@ function run_build() {
     # Adjust Qemu CPU
     if bashio::var.equals "${build_arch}" armhf; then
         docker_cli+=("--build-arg" "QEMU_CPU=arm1176")
+    fi
+
+    # Ensure docker reports correct architecture
+    # to the containerized build process
+    if bashio::var.equals "${build_arch}" i386; then
+        docker_wrapper="linux32"
     fi
 
     # Check if image exists on docker hub
@@ -314,7 +321,7 @@ function run_build() {
 
     # Build image
     bashio::log.info "Run build for ${repository}/${image}:${version} with platform ${docker_platform}"
-    docker buildx build --pull --tag "${repository}/${image}:${version}" \
+    ${docker_wrapper} docker buildx build --pull --tag "${repository}/${image}:${version}" \
         --platform "${docker_platform}" \
         --build-arg "BUILD_FROM=${build_from}" \
         --build-arg "BUILD_VERSION=${version}" \
