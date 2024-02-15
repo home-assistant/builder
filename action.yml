@@ -46,6 +46,7 @@ runs:
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
             -v ~/.docker:/root/.docker \
             -v ${{ github.workspace }}:/data \
+            -v /mnt:/mnt \
             --env-file "${{ github.action_path }}/env_file" \
             ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} \
             ${{ inputs.args }}
