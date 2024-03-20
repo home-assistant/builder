@@ -10,7 +10,7 @@ cosign:
   identity: https://github.com/home-assistant/builder/.*
 args:
   YQ_VERSION: "v4.13.2"
-  COSIGN_VERSION: "2.0.2"
+  COSIGN_VERSION: "2.2.3"
 labels:
   io.hass.type: builder
   org.opencontainers.image.title: "Home Assistant Builder"

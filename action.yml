@@ -11,7 +11,7 @@ runs:
     - name: Install Cosign
       uses: sigstore/cosign-installer@v3.4.0
       with:
-        cosign-release: "v2.0.2"
+        cosign-release: "v2.2.3"
 
     - shell: bash
       id: version
