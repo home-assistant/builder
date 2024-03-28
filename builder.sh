@@ -516,6 +516,7 @@ function build_addon() {
     if bashio::fs.file_exists "/tmp/build_config/build.json"; then
         build_from="$(jq --raw-output ".build_from.$build_arch // empty" "/tmp/build_config/build.json")"
         args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
+        labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
         shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
     fi
 
@@ -532,13 +533,21 @@ function build_addon() {
         done
     fi
 
+    # Additional build labels
+    if bashio::var.has_value "${labels}"; then
+        for label in ${labels}; do
+            value="$(jq --raw-output ".labels.\"${label}\"" "/tmp/build_config/build.json")"
+            docker_cli+=("--label" "${label}=${value}")
+        done
+    fi
+
     # Read addon config.json
     name="$(jq --raw-output '.name // empty' "/tmp/build_config/config.json" | sed "s/'//g")"
     description="$(jq --raw-output '.description // empty' "/tmp/build_config/config.json" | sed "s/'//g")"
     url="$(jq --raw-output '.url // empty' "/tmp/build_config/config.json")"
     raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/config.json")"
     mapfile -t supported_arch < <(jq --raw-output '.arch // empty' "/tmp/build_config/config.json")
-    
+
     # Read version from config.json when VERSION is not set
     if [ -n "$VERSION" ]; then
     	version="$VERSION"
@@ -740,7 +749,7 @@ function cosign_sign() {
     if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${COSIGN}"; then
         return 0
     fi
-    
+
     for j in {1..6}; do
         if cosign sign --yes "${image}"; then
             success=true
