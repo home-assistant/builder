@@ -525,6 +525,7 @@ function build_addon() {
 
     # Set defaults build things
     if [ -z "$build_from" ]; then
+        bashio::log.info "No build information or from not provided. Using default base image."
         build_from="homeassistant/${build_arch}-base:latest"
     fi
 
