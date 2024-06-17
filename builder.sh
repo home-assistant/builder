@@ -431,13 +431,16 @@ function build_base() {
     local docker_tags=()
 
     # Read build.json
-    if bashio::fs.file_exists "/tmp/build_config/build.json"; then
-        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "/tmp/build_config/build.json")"
-        args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
-        labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
-        raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
-        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
+    if ! bashio::fs.file_exists "/tmp/build_config/build.json"; then
+        bashio::log.error "Build information not found!"
+        return 1
     fi
+
+    build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "/tmp/build_config/build.json")"
+    args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
+    labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
+    raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
+    shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
 
     # Set defaults build things
     if ! bashio::var.has_value "${build_from}"; then
@@ -522,6 +525,7 @@ function build_addon() {
 
     # Set defaults build things
     if [ -z "$build_from" ]; then
+        bashio::log.info "No build information or from not provided. Using default base image."
         build_from="homeassistant/${build_arch}-base:latest"
     fi
 
@@ -595,13 +599,16 @@ function build_generic() {
     local docker_tags=()
 
     # Read build.json
-    if bashio::fs.file_exists "/tmp/build_config/build.json"; then
-        build_from="$(jq --raw-output ".build_from.$build_arch // empty" "/tmp/build_config/build.json")"
-        args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
-        labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
-        raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
-        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
+    if ! bashio::fs.file_exists "/tmp/build_config/build.json"; then
+        bashio::log.error "Build information not found!"
+        return 1
     fi
+
+    build_from="$(jq --raw-output ".build_from.$build_arch // empty" "/tmp/build_config/build.json")"
+    args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
+    labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
+    raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
+    shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
 
     # Set defaults build things
     if ! bashio::var.has_value "$build_from"; then
@@ -653,13 +660,16 @@ function build_machine() {
     local docker_tags=()
 
     # Read build.json
-    if bashio::fs.file_exists "/tmp/build_config/build.json"; then
-        build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "/tmp/build_config/build.json")"
-        args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
-        labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
-        raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
-        shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
+    if ! bashio::fs.file_exists "/tmp/build_config/build.json"; then
+        bashio::log.error "Build information not found!"
+        return 1
     fi
+
+    build_from="$(jq --raw-output ".build_from.${build_arch} // empty" "/tmp/build_config/build.json")"
+    args="$(jq --raw-output '.args // empty | keys[]' "/tmp/build_config/build.json")"
+    labels="$(jq --raw-output '.labels // empty | keys[]' "/tmp/build_config/build.json")"
+    raw_image="$(jq --raw-output '.image // empty' "/tmp/build_config/build.json")"
+    shadow_repository="$(jq --raw-output '.shadow_repository // empty' "/tmp/build_config/build.json")"
 
     # Modify build_from
     if [[ "${build_from}" =~ :$ ]]; then
