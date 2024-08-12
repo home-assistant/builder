@@ -52,7 +52,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish ${{ matrix.architecture }} builder
-        uses: ./
+        uses: home-assistant/builder@2024.03.5
         with:
           args: |
             --${{ matrix.architecture }} \
