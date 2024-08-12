@@ -29,6 +29,7 @@ RUN \
     else \
         exit 1; \
     fi \
+    && git config --global --add safe.directory "*" \
     && chmod +x /usr/bin/yq \
     && chmod +x /usr/bin/cosign
 
