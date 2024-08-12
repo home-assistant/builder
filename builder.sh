@@ -389,7 +389,8 @@ function run_build() {
     fi
 
     # Singing image (cosign)
-    cosign_sign "${repository}/${image}:${version}"
+    image_id=$(docker inspect --format='{{index .RepoDigests 0}}' "${repository}/${image}:${version}")
+    cosign_sign "${image_id}"
 }
 
 function convert_to_json() {
