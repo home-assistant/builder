@@ -46,3 +46,4 @@ jobs:
             --${{ matrix.architecture }} \
             --target /data \
             --generic ${{ github.sha }}
+          no-pull: true

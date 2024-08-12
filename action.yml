@@ -5,6 +5,10 @@ inputs:
     description: "Arguments passed to the builder"
     required: true
     default: "--help"
+  no-pull:
+    description: "Do not pull the latest version of builder (for testing)"
+    required: false
+    default: false
 runs:
   using: "composite"
   steps:
@@ -23,6 +27,7 @@ runs:
         echo "version=${input}" >> "$GITHUB_OUTPUT"
 
     - shell: bash
+      if: ${{ inputs.no-pull == true }}
       run: |
         docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
         cosign verify \
