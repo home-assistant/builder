@@ -386,11 +386,13 @@ function run_build() {
                 fi
             done
         done
-    fi
 
-    # Singing image (cosign)
-    image_id=$(docker inspect --format='{{index .RepoDigests 0}}' "${repository}/${image}:${version}")
-    cosign_sign "${image_id}"
+        # Singing image (cosign)
+        if bashio::var.true "${COSIGN}"; then
+            image_digest=$(docker inspect --format='{{index .RepoDigests 0}}' "${repository}/${image}:${version}")
+            cosign_sign "${image_digest}"
+        fi
+    fi
 }
 
 function convert_to_json() {
@@ -756,10 +758,6 @@ function cosign_sign() {
     local image=$1
 
     local success=false
-
-    if bashio::var.false "${DOCKER_PUSH}" || bashio::var.false "${COSIGN}"; then
-        return 0
-    fi
 
     for j in {1..6}; do
         if cosign sign --yes "${image}"; then
