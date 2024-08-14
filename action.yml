@@ -27,7 +27,7 @@ runs:
         echo "version=${input}" >> "$GITHUB_OUTPUT"
 
     - shell: bash
-      if: ${{ inputs.no-pull == "false" }}
+      if: ${{ inputs.no-pull == 'false' }}
       run: |
         docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
         cosign verify \
