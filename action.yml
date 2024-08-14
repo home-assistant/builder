@@ -6,7 +6,7 @@ inputs:
     required: true
     default: "--help"
   pull:
-    description: "Do not pull the latest version of builder (for testing)"
+    description: "Pull the latest version of builder (set to `false` for testing)"
     required: false
     default: "true"
 runs:
