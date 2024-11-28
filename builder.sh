@@ -374,7 +374,7 @@ function run_build() {
         for i in "${push_images[@]}"; do
             for j in {1..3}; do
                 bashio::log.info "Start upload of ${i} (attempt #${j}/3)"
-                if docker push "${i}" > /dev/null 2>&1; then
+                if docker push "${i}"; then
                     bashio::log.info "Upload succeeded on attempt #${j}"
                     break
                 fi
