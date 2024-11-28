@@ -12,11 +12,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Cosign
-      uses: sigstore/cosign-installer@v3.7.0
-      with:
-        cosign-release: "v2.4.0"
-
     - shell: bash
       id: version
       run: |
@@ -26,14 +21,6 @@ runs:
         fi
         echo "version=${input}" >> "$GITHUB_OUTPUT"
 
-    - shell: bash
-      if: ${{ inputs.pull == 'true' }}
-      run: |
-        docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
-        cosign verify \
-          --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-          --certificate-identity-regexp https://github.com/home-assistant/builder/.* \
-          ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
 
     - shell: bash
       id: builder
