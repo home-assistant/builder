@@ -1,4 +1,4 @@
-name: "Home Assistant builder"
+name: "marcohald Home Assistant builder"
 description: "Multi-purpose cross-compile docker builder"
 inputs:
   args:
