@@ -24,7 +24,7 @@ runs:
         if [[ "${input}" == "master" ]] || [[ -z "${input}" ]]; then
           input="latest"
         fi
-        echo "version=${input}" >> "$GITHUB_OUTPUT"
+        echo "version=2024.08.2" >> "$GITHUB_OUTPUT"
 
     - shell: bash
       if: ${{ inputs.pull == 'true' }}
