@@ -9,6 +9,10 @@ inputs:
     description: "Pull the latest version of builder (set to `false` for testing)"
     required: false
     default: "true"
+  image:
+    description: "Define the builder image archictecture (default: amd64)"
+    required: false
+    default: "amd64"
 runs:
   using: "composite"
   steps:
@@ -29,16 +33,16 @@ runs:
     - shell: bash
       if: ${{ inputs.pull == 'true' }}
       run: |
-        docker pull ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
+        docker pull ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }}
         cosign verify \
           --certificate-oidc-issuer https://token.actions.githubusercontent.com \
           --certificate-identity-regexp https://github.com/home-assistant/builder/.* \
-          ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }}
+          ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }}
 
     - shell: bash
       id: builder
       run: |
-        builder=$(docker images ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} -q)
+        builder=$(docker images ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }} -q)
         echo "id=$builder" >> "$GITHUB_OUTPUT"
 
     - shell: bash
@@ -52,7 +56,7 @@ runs:
             -v ~/.docker:/root/.docker \
             -v ${{ github.workspace }}:/data \
             --env-file "${{ github.action_path }}/env_file" \
-            ghcr.io/home-assistant/amd64-builder:${{ steps.version.outputs.version }} \
+            ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }} \
             ${{ inputs.args }}
 
     - shell: bash
