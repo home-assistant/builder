@@ -38,6 +38,7 @@ declare -A BUILD_MACHINE=(
                           [generic-x86-64]="amd64" \
                           [intel-nuc]="amd64" \
                           [khadas-vim3]="aarch64" \
+                          [khadas-vim3l]="aarch64" \
                           [odroid-c2]="aarch64" \
                           [odroid-c4]="aarch64" \
                           [odroid-m1]="aarch64" \
