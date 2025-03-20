@@ -747,7 +747,9 @@ function init_crosscompile() {
     fi
 
     bashio::log.info "Setup crosscompiling feature"
-    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes \
+    docker run --privileged --rm tonistiigi/binfmt --uninstall qemu-* \
+        > /dev/null 2>&1 || bashio::log.warning "Can't remove old qemu binfmt"
+    docker run --rm --privileged tonistiigi/binfmt --install all \
         > /dev/null 2>&1 || bashio::log.warning "Can't enable crosscompiling feature"
 }
 
