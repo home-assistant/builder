@@ -9,6 +9,7 @@ set +u
 
 DOCKER_TIMEOUT=20
 DOCKER_PID=-1
+DOCKER_BUILDX_BUILDER="ha-builder"
 DOCKER_HUB=
 DOCKER_HUB_CHECK=false
 DOCKER_CACHE=true
@@ -207,6 +208,16 @@ function stop_docker() {
 }
 
 
+function create_buildx_builder() {
+    bashio::log.info "Creating buildx builder: ${DOCKER_BUILDX_BUILDER}..."
+    if ! docker inspect "${DOCKER_BUILDX_BUILDER}" >/dev/null 2>&1; then
+        if ! docker buildx create --name "${DOCKER_BUILDX_BUILDER}" >/dev/null; then
+            bashio::exit.nok "Failed to create buildx builder"
+        fi
+    fi
+}
+
+
 function run_build() {
     local build_dir=$1
     local repository=$2
@@ -218,7 +229,6 @@ function run_build() {
     local docker_tags=("${!8}")
     local shadow_repository=${9}
 
-    local push_images=()
     local cache_tag="latest"
     local metadata
     local release="${version}"
@@ -319,27 +329,6 @@ function run_build() {
         dockerfile="${build_dir}/Dockerfile.${build_arch}"
     fi
 
-    # Build image
-    bashio::log.info "Run build for ${repository}/${image}:${version} with platform ${docker_platform}"
-    ${docker_wrapper} docker buildx build --pull --tag "${repository}/${image}:${version}" \
-        --platform "${docker_platform}" \
-        --build-arg "BUILD_FROM=${build_from}" \
-        --build-arg "BUILD_VERSION=${version}" \
-        --build-arg "BUILD_ARCH=${build_arch}" \
-        --file "${dockerfile}" \
-        "${docker_cli[@]}" \
-        "${build_dir}"
-
-    # Success?
-    # shellcheck disable=SC2181
-    if [ $? -ne 0 ]; then
-        BUILD_ERROR+=("${repository}/${image}:${version}")
-        return 0
-    fi
-
-    push_images+=("${repository}/${image}:${version}")
-    bashio::log.info "Finish build for ${repository}/${image}:${version}"
-
     # Tag latest
     if bashio::var.true "${DOCKER_LATEST}"; then
         docker_tags+=("latest")
@@ -350,48 +339,47 @@ function run_build() {
         docker_tags+=("${tag_image}")
     done
 
-    # Tag images
-    for tag_image in "${docker_tags[@]}"; do
-        bashio::log.info "Create image tag: ${tag_image}"
-        docker tag "${repository}/${image}:${version}" "${repository}/${image}:${tag_image}"
-        push_images+=("${repository}/${image}:${tag_image}")
-    done
-
-    # Use shaddow repository
+    # Use shadow repository
     if bashio::var.has_value "${shadow_repository}"; then
-        bashio::log.info "Generate repository shadow images"
-        docker tag "${repository}/${image}:${version}" "${shadow_repository}/${image}:${version}"
+        shadow_tags=("${shadow_repository}/${image}:${version}")
         for tag_image in "${docker_tags[@]}"; do
-            bashio::log.info "Create shadow-image tag: ${shadow_repository}/${image}:${tag_image}"
-            docker tag "${repository}/${image}:${version}" "${shadow_repository}/${image}:${tag_image}"
-            push_images+=("${shadow_repository}/${image}:${tag_image}")
+            shadow_tags+=("${shadow_repository}/${image}:${tag_image}")
         done
-        push_images+=("${shadow_repository}/${image}:${version}")
+        docker_tags+=("${shadow_tags[@]}")
     fi
 
-    # Push images
-    if bashio::var.true "${DOCKER_PUSH}"; then
-        for i in "${push_images[@]}"; do
-            for j in {1..3}; do
-                bashio::log.info "Start upload of ${i} (attempt #${j}/3)"
-                if docker push "${i}" > /dev/null 2>&1; then
-                    bashio::log.info "Upload succeeded on attempt #${j}"
-                    break
-                fi
-                if [[ "${j}" == "3" ]]; then
-                    bashio::exit.nok "Upload failed on attempt #${j}"
-                else
-                    bashio::log.warning "Upload failed on attempt #${j}"
-                    sleep 30
-                fi
-            done
-        done
+    # Tag images
+    for tag_image in "${docker_tags[@]}"; do
+        docker_cli+=(--tag "${tag_image}")
+    done
 
-        # Singing image (cosign)
-        if bashio::var.true "${COSIGN}"; then
-            image_digest=$(docker inspect --format='{{index .RepoDigests 0}}' "${repository}/${image}:${version}")
-            cosign_sign "${image_digest}"
-        fi
+    # Build image
+    bashio::log.info "Run build for ${repository}/${image}:${version} with platform ${docker_platform}"
+    ${docker_wrapper} docker buildx build --pull --tag "${repository}/${image}:${version}" \
+        --builder "${DOCKER_BUILDX_BUILDER}" \
+        --platform "${docker_platform}" \
+        --build-arg "BUILD_FROM=${build_from}" \
+        --build-arg "BUILD_VERSION=${version}" \
+        --build-arg "BUILD_ARCH=${build_arch}" \
+        --file "${dockerfile}" \
+        --output "type=image,oci-mediatypes=true,compression=zstd,push=${DOCKER_PUSH}" \
+        --load \
+        "${docker_cli[@]}" \
+        "${build_dir}"
+
+    # Success?
+    # shellcheck disable=SC2181
+    if [ $? -ne 0 ]; then
+        BUILD_ERROR+=("${repository}/${image}:${version}")
+        return 0
+    fi
+
+    bashio::log.info "Finish build for ${repository}/${image}:${version}"
+
+    # Sign image (cosign)
+    if bashio::var.true "${DOCKER_PUSH}" && bashio::var.true "${COSIGN}"; then
+        image_digest=$(docker inspect --format='{{index .RepoDigests 0}}' "${repository}/${image}:${version}")
+        cosign_sign "${image_digest}"
     fi
 }
 
@@ -965,6 +953,7 @@ mkdir -p /data
 # Setup docker env
 init_crosscompile
 start_docker
+create_buildx_builder
 
 # Load external repository
 if [ -n "$GIT_REPOSITORY" ]; then
