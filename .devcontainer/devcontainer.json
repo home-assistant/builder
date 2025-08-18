@@ -1,6 +1,6 @@
 {
   "name": "Alpine",
-  "image": "mcr.microsoft.com/vscode/devcontainers/base:0-alpine-3.20",
+  "image": "mcr.microsoft.com/vscode/devcontainers/base:0-alpine-3.22",
   "settings": {
     "terminal.integrated.shell.linux": "/bin/ash",
     "shellcheck.enable": true,
