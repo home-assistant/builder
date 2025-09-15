@@ -20,6 +20,7 @@ DOCKER_LOCAL=false
 SELF_CACHE=false
 CUSTOM_CACHE_TAG=
 COSIGN=false
+COSIGN_VERIFY=true
 RELEASE_TAG=false
 GIT_REPOSITORY=
 GIT_BRANCH="master"
@@ -142,6 +143,8 @@ Options:
   Security:
     --cosign
         Enable signing images with cosign.
+    --no-cosign-verify
+        Disable image signature validation.
 EOF
 
     bashio::exit.nok
@@ -784,6 +787,11 @@ function cosign_verify() {
 
     local success=false
 
+    if bashio::var.false "${COSIGN_VERIFY}"; then
+        bashio::log.warning "Validation of ${image} signature is disabled"
+        return 0
+    fi
+
     # Support scratch image
     if [ "$image" == "scratch" ]; then
         bashio::log.info "Scratch image, skiping validation with cosign"
@@ -879,6 +887,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --cosign)
             COSIGN=true
+            ;;
+        --no-cosign-verify)
+            COSIGN_VERIFY=false
             ;;
         --cache-tag)
             CUSTOM_CACHE_TAG=$2

@@ -158,6 +158,8 @@ Options:
   Security:
     --cosign
         Enable signing images with cosign.
+    --no-cosign-verify
+        Disable image signature validation.
 ```
 
 ## Local installation
