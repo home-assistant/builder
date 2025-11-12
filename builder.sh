@@ -222,7 +222,7 @@ function run_build() {
     local shadow_repository=${9}
 
     local push_images=()
-    local cache_tag="latest"
+    local cache_tags=("cache-latest" "latest")
     local metadata
     local release="${version}"
     local dockerfile="${build_dir}/Dockerfile"
@@ -285,23 +285,31 @@ function run_build() {
     # Init Cache
     if bashio::var.true "${DOCKER_CACHE}"; then
         if bashio::var.has_value "${CUSTOM_CACHE_TAG}"; then
-            cache_tag="${CUSTOM_CACHE_TAG}"
+            cache_tags=("${CUSTOM_CACHE_TAG}")
         elif bashio::var.true "${SELF_CACHE}"; then
-            cache_tag="${version}"
+            cache_tags=("cache-${version}")
         fi
 
-        bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag} and platform ${docker_platform}"
-        docker pull "${repository}/${image}:${cache_tag}" --platform "${docker_platform}" > /dev/null 2>&1 || true
-
-        if \
-            docker image inspect "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 \
-            && cosign_verify "${cosign_issuer}" "${cosign_identity}" "${repository}/${image}:${cache_tag}" "${docker_platform}" "false" \
-        ; then
-            docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
-        else
-            docker_cli+=("--no-cache")
-            bashio::log.warning "No cache image found. Disabling cache for this build."
-        fi
+        for cache_tag in "${cache_tags[@]}"; do
+            bashio::log.info "Init cache for ${repository}/${image}:${version} with tag ${cache_tag} and platform ${docker_platform}"
+            docker pull "${repository}/${image}:${cache_tag}" --platform "${docker_platform}" > /dev/null 2>&1 || true
+            
+            if \
+                docker image inspect "${repository}/${image}:${cache_tag}" > /dev/null 2>&1 \
+                && cosign_verify "${cosign_issuer}" "${cosign_identity}" "${repository}/${image}:${cache_tag}" "${docker_platform}" "false" \
+            ; then
+                docker_cli+=("--cache-from" "${repository}/${image}:${cache_tag}")
+                # Only add 'cache-to' if 'cache_tag' starts with 'cache'
+                if [[ "${cache_tag}" == cache* ]]; then
+                    bashio::log.info "Setting cache-to as ${repository}/${image}:${cache_tag}"
+                    docker_cli+=("--cache-to" "type=registry,mode=max,image-manifest=true,oci-mediatypes=true,ref=${repository}/${image}:${cache_tag}")
+                fi
+            else
+                docker_cli+=("--no-cache")
+                bashio::log.warning "No cache image found. Disabling cache for this build."
+            fi
+            
+        done
     else
         docker_cli+=("--no-cache")
     fi
