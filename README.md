@@ -109,16 +109,10 @@ Options:
         Use this to set build_from tag if not specified.
 
   Architecture
-    --armhf
-        Build for arm v6.
-    --armv7
-        Build for arm v7.
     --amd64
         Build for intel/amd 64bit.
     --aarch64
         Build for arm 64bit.
-    --i386
-        Build for intel/amd 32bit.
     --all
         Build all architecture.
 
@@ -168,12 +162,6 @@ amd64:
 
 ```bash
 docker pull ghcr.io/home-assistant/amd64-builder:latest
-```
-
-armv7:
-
-```bash
-docker pull ghcr.io/home-assistant/armv7-builder:latest
 ```
 
 aarch64:
