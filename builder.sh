@@ -43,21 +43,13 @@ declare -A BUILD_MACHINE=(
                           [odroid-c4]="aarch64" \
                           [odroid-m1]="aarch64" \
                           [odroid-n2]="aarch64" \
-                          [odroid-xu]="armv7" \
-                          [qemuarm]="armhf" \
                           [qemuarm-64]="aarch64" \
-                          [qemux86]="i386" \
                           [qemux86-64]="amd64" \
-                          [raspberrypi]="armhf" \
-                          [raspberrypi2]="armv7" \
-                          [raspberrypi3]="armv7" \
                           [raspberrypi3-64]="aarch64" \
-                          [raspberrypi4]="armv7" \
                           [raspberrypi4-64]="aarch64" \
                           [raspberrypi5-64]="aarch64" \
                           [yellow]="aarch64" \
-                          [green]="aarch64" \
-                          [tinker]="armv7" )
+                          [green]="aarch64" )
 
 
 #### Misc functions ####
@@ -94,16 +86,10 @@ Options:
         Use this to set build_from tag if not specified.
 
   Architecture
-    --armhf
-        Build for arm v6.
-    --armv7
-        Build for arm v7.
     --amd64
         Build for intel/amd 64bit.
     --aarch64
         Build for arm 64bit.
-    --i386
-        Build for intel/amd 32bit.
     --all
         Build all architecture.
 
@@ -243,10 +229,7 @@ function run_build() {
 
     # Set docker platform from build arch
     case "${build_arch}" in
-        armhf)      docker_platform="linux/arm/v6" ;;
-        armv7)      docker_platform="linux/arm/v7" ;;
         amd64)      docker_platform="linux/amd64" ;;
-        i386)       docker_platform="linux/386" ;;
         aarch64)    docker_platform="linux/arm64" ;;
         *)          bashio::exit.nok "Recived unknown architecture ${build_arch}" ;;
     esac
@@ -257,17 +240,6 @@ function run_build() {
         cosign_base_issuer="$(jq --raw-output '.cosign.base_issuer // "https://token.actions.githubusercontent.com"' "/tmp/build_config/build.json")"
         cosign_identity="$(jq --raw-output '.cosign.identity // empty' "/tmp/build_config/build.json")"
         cosign_issuer="$(jq --raw-output '.cosign.issuer // "https://token.actions.githubusercontent.com"' "/tmp/build_config/build.json")"
-    fi
-
-    # Adjust Qemu CPU
-    if bashio::var.equals "${build_arch}" armhf; then
-        docker_cli+=("--build-arg" "QEMU_CPU=arm1176")
-    fi
-
-    # Ensure docker reports correct architecture
-    # to the containerized build process
-    if bashio::var.equals "${build_arch}" i386; then
-        docker_wrapper="linux32"
     fi
 
     # Check if image exists on docker hub
@@ -917,23 +889,14 @@ while [[ $# -gt 0 ]]; do
             DOCKER_PASSWORD=$2
             shift
 	    ;;
-        --armhf)
-            BUILD_LIST+=("armhf")
-            ;;
-        --armv7)
-            BUILD_LIST+=("armv7")
-            ;;
         --amd64)
             BUILD_LIST+=("amd64")
-            ;;
-        --i386)
-            BUILD_LIST+=("i386")
             ;;
         --aarch64)
             BUILD_LIST+=("aarch64")
             ;;
         --all)
-            BUILD_LIST=("armhf" "armv7" "amd64" "i386" "aarch64")
+            BUILD_LIST=("amd64" "aarch64")
             ;;
         --addon)
             BUILD_TYPE="addon"
