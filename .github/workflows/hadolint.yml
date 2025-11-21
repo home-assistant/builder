@@ -11,5 +11,5 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: brpaz/hadolint-action@v1.5.0
