@@ -27,6 +27,8 @@ For keep a trust-chain during the built, you need set `identity` and `base_ident
 
 ### Test action example
 
+_Note: Replace `[version]` with the desired tag from the [releases](https://github.com/home-assistant/builder/releases) page._
+
 ```yaml
 name: "Test"
 
@@ -38,9 +40,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Test build
-        uses: home-assistant/builder@master
+        uses: home-assistant/builder@[version]
         with:
           args: |
             --test \
@@ -50,6 +52,8 @@ jobs:
 ```
 
 ### Publish action example
+
+_Note: Replace `[version]` with the desired tag from the [releases](https://github.com/home-assistant/builder/releases) page._
 
 ```yaml
 name: "Publish"
@@ -64,14 +68,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Publish
-        uses: home-assistant/builder@master
+        uses: home-assistant/builder@[version]
         with:
           args: |
             --all \
