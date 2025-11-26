@@ -112,13 +112,11 @@ Options:
     --version-from <VERSION>
         Use this to set build_from tag if not specified.
 
-  Architecture
+  Architecture (select at least one)
     --amd64
         Build for intel/amd 64bit.
     --aarch64
         Build for arm 64bit.
-    --all
-        Build all architecture.
 
   Build handling
     --test

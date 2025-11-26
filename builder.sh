@@ -85,13 +85,11 @@ Options:
     --version-from <VERSION>
         Use this to set build_from tag if not specified.
 
-  Architecture
+  Architecture (select at least one)
     --amd64
         Build for intel/amd 64bit.
     --aarch64
         Build for arm 64bit.
-    --all
-        Build all architecture.
 
   Build handling
     --test
@@ -896,7 +894,7 @@ while [[ $# -gt 0 ]]; do
             BUILD_LIST+=("aarch64")
             ;;
         --all)
-            BUILD_LIST=("amd64" "aarch64")
+            bashio::exit.nok "--all is deprecated, use explicit --amd64 --aarch64 to build for both supported platforms instead"
             ;;
         --addon)
             BUILD_TYPE="addon"
