@@ -50,9 +50,6 @@ runs:
       run: |
         env > "${{ github.action_path }}/env_file"
         sed -i "/\(HOME\|TERM\|PWD\|HOSTNAME\|PATH\|SHLVL\|USER\|GOROOT\)/d" "${{ github.action_path }}/env_file"
-        # Work around QEMU aarch64 bugs
-        # https://github.com/tonistiigi/binfmt/issues/215#issuecomment-2613567455
-        sudo sysctl kernel.randomize_va_space=0
 
         docker run --rm --privileged \
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
@@ -61,8 +58,6 @@ runs:
             --env-file "${{ github.action_path }}/env_file" \
             ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }} \
             ${{ inputs.args }}
-
-        sudo sysctl kernel.randomize_va_space=2
 
     - shell: bash
       id: verify
