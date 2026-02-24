@@ -11,7 +11,7 @@ jobs:
       architectures: ${{ steps.info.outputs.architectures }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Get information
         id: info
@@ -27,10 +27,10 @@ jobs:
         architecture: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Build the builder
-        uses: home-assistant/builder@2025.11.0
+        uses: home-assistant/builder@305e89677f0ff458bf6d10adfd5b360a32ab84e6 # 2026.02.0
         with:
           args: |
             --test \
