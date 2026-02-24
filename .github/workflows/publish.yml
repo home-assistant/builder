@@ -58,4 +58,5 @@ jobs:
             --${{ matrix.architecture }} \
             --target /data \
             --cosign \
+            --additional-tag ${{ github.sha }} \
             --generic $GIT_TAG_NAME
