@@ -109,14 +109,20 @@ jobs:
         run: |
           arch_count=$(jq 'length' <<< "${ARCHITECTURES}")
           if [[ "${MULTI_ARCH}" != "true" ]] && (( arch_count > 1 )); then
-            echo "::error::multi_arch is false but ${arch_count} architectures were specified; use multi_arch: true or pass a single architecture"
+            echo "::error::multi-arch is false but ${arch_count} architectures were specified; use multi-arch: true or pass a single architecture"
+            exit 1
+          fi
+
+          invalid_arches=$(jq -r '[.[] | select(. != "amd64" and . != "aarch64")] | unique | join(", ")' <<< "${ARCHITECTURES}")
+          if [[ -n "${invalid_arches}" ]]; then
+            echo "::error::Unsupported architecture(s): ${invalid_arches}. Supported values: amd64, aarch64"
             exit 1
           fi
 
           matrix=$(jq -c '{include: [.[] |
             if . == "amd64" then {arch: "amd64", os: "ubuntu-24.04", platform: "linux/amd64"}
             elif . == "aarch64" then {arch: "aarch64", os: "ubuntu-24.04-arm", platform: "linux/arm64"}
-            else empty end
+            end
           ]}' <<< "${ARCHITECTURES}")
           echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
 
@@ -235,4 +241,3 @@ jobs:
             digest=$(skopeo inspect --raw --no-tags "docker://${tags[0]}" | skopeo manifest-digest /dev/stdin)
             cosign sign --yes "${REGISTRY_PREFIX}/${IMAGE_NAME}@${digest}"
           fi
-

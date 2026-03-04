@@ -140,6 +140,7 @@ runs:
         BUILD_ARGS_INPUT: ${{ inputs.build-args }}
         COSIGN_ENABLED: ${{ inputs.cosign }}
         CACHE_SCOPE: ${{ inputs.cache-scope }}
+        CACHE_IMAGE_TAG: ${{ inputs.cache-image-tag }}
         CACHE_VERIFIED: ${{ steps.verify_cache.outputs.verified }}
         FILE_INPUT: ${{ inputs.file }}
         CONTEXT: ${{ inputs.context }}
@@ -187,7 +188,7 @@ runs:
 
         cache_from=("type=gha,scope=${cache_scope}")
         if [[ "${COSIGN_ENABLED}" != "true" ]] || [[ "${CACHE_VERIFIED}" == "true" ]]; then
-          cache_from+=("type=registry,ref=${IMAGE}:${IMAGE_TAG}")
+          cache_from+=("type=registry,ref=${IMAGE}:${CACHE_IMAGE_TAG}")
         fi
         {
           echo "cache_from<<EOF"
