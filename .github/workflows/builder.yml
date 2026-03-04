@@ -1,4 +1,4 @@
-name: Reusable builder
+name: Home Assistant multi-arch image builder
 
 on:
   workflow_call:
