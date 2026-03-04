@@ -33,6 +33,10 @@ inputs:
     description: Whether to push images to registry
     required: false
     default: "false"
+  load:
+    description: Whether to load the built image into the Docker engine
+    required: false
+    default: "false"
   cache-gha:
     description: Whether to use GitHub Actions cache for build caching
     required: false
@@ -226,7 +230,7 @@ runs:
         file: ${{ steps.options.outputs.file }}
         pull: true
         push: ${{ inputs.push == 'true' }}
-        load: ${{ inputs.push != 'true' }}
+        load: ${{ inputs.load == 'true' }}
         build-args: ${{ steps.options.outputs.build_args }}
         tags: ${{ steps.options.outputs.tags }}
         outputs: ${{ steps.options.outputs.output }}
