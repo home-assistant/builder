@@ -7,24 +7,24 @@ on:
         description: Architectures to build (JSON array, e.g., '["amd64", "aarch64"]')
         required: true
         type: string
-      multi_arch:
+      multi-arch:
         description: Prefix per-arch image names with architecture (required for multiple architectures)
         required: false
         default: true
         type: boolean
-      registry_prefix:
+      registry-prefix:
         description: Registry and namespace prefix (e.g., "ghcr.io/owner")
         required: true
         type: string
-      image_name:
+      image-name:
         description: Image name without a tag (e.g., "base-python")
         required: true
         type: string
-      image_tag:
+      image-tag:
         description: Base image tag (e.g., "3.23")
         required: true
         type: string
-      image_extra_tags:
+      image-extra-tags:
         description: Additional tags, one per line
         required: false
         default: ""
@@ -42,7 +42,7 @@ on:
         description: Image version label
         required: true
         type: string
-      build_args:
+      build-args:
         description: Additional build arguments (key=value format, one per line)
         required: false
         default: ""
@@ -52,12 +52,12 @@ on:
         required: false
         default: false
         type: boolean
-      cache_scope:
+      cache-scope:
         description: Scope for build cache sharing (defaults to architecture, set if building multiple images from a single repo)
         required: false
         default: ""
         type: string
-      cache_image_tag:
+      cache-image-tag:
         description: Tag of the image containing BuildKit inline cache metadata
         required: false
         default: "latest"
@@ -67,28 +67,28 @@ on:
         required: false
         default: true
         type: boolean
-      cosign_identity:
+      cosign-identity:
         description: Certificate identity regexp for verifying cache images (defaults to current repo pattern)
         required: false
         default: ""
         type: string
-      cosign_issuer:
+      cosign-issuer:
         description: Certificate OIDC issuer regexp for all cosign verification
         required: false
         default: "https://token.actions.githubusercontent.com"
         type: string
-      verify_base:
+      verify-base:
         description: Base image reference to verify with cosign before building
         required: false
         default: ""
         type: string
-      cosign_base_identity:
+      cosign-base-identity:
         description: Certificate identity regexp for verifying the base (FROM) image
         required: false
         default: ""
         type: string
-      cosign_base_issuer:
-        description: Certificate OIDC issuer regexp for base image verification (defaults to cosign_issuer)
+      cosign-base-issuer:
+        description: Certificate OIDC issuer regexp for base image verification (defaults to cosign-issuer)
         required: false
         default: ""
         type: string
@@ -105,7 +105,7 @@ jobs:
         shell: bash
         env:
           ARCHITECTURES: ${{ inputs.architectures }}
-          MULTI_ARCH: ${{ inputs.multi_arch }}
+          MULTI_ARCH: ${{ inputs.multi-arch }}
         run: |
           arch_count=$(jq 'length' <<< "${ARCHITECTURES}")
           if [[ "${MULTI_ARCH}" != "true" ]] && (( arch_count > 1 )); then
@@ -141,10 +141,10 @@ jobs:
         id: image
         shell: bash
         env:
-          REGISTRY_PREFIX: ${{ inputs.registry_prefix }}
-          IMAGE_NAME: ${{ inputs.image_name }}
+          REGISTRY_PREFIX: ${{ inputs.registry-prefix }}
+          IMAGE_NAME: ${{ inputs.image-name }}
           ARCH: ${{ matrix.arch }}
-          MULTI_ARCH: ${{ inputs.multi_arch }}
+          MULTI_ARCH: ${{ inputs.multi-arch }}
         run: |
           if [[ "${MULTI_ARCH}" == "true" ]]; then
             image="${REGISTRY_PREFIX}/${ARCH}-${IMAGE_NAME}"
@@ -158,28 +158,28 @@ jobs:
         uses: ./.github/actions/build-image
         with:
           image: ${{ steps.image.outputs.name }}
-          image_tag: ${{ inputs.image_tag }}
-          image_extra_tags: ${{ inputs.image_extra_tags }}
+          image-tag: ${{ inputs.image-tag }}
+          image-extra-tags: ${{ inputs.image-extra-tags }}
           arch: ${{ matrix.arch }}
           platform: ${{ matrix.platform }}
           push: ${{ inputs.push }}
-          cache_scope: ${{ inputs.cache_scope }}
-          cache_image_tag: ${{ inputs.cache_image_tag }}
-          docker_password: ${{ secrets.GITHUB_TOKEN }}
+          cache-scope: ${{ inputs.cache-scope }}
+          cache-image-tag: ${{ inputs.cache-image-tag }}
+          docker-password: ${{ secrets.GITHUB_TOKEN }}
           context: ${{ inputs.context }}
           file: ${{ inputs.file }}
           version: ${{ inputs.version }}
-          build_args: ${{ inputs.build_args }}
+          build-args: ${{ inputs.build-args }}
           cosign: ${{ inputs.cosign }}
-          cosign_identity: ${{ inputs.cosign_identity }}
-          cosign_base_identity: ${{ inputs.cosign_base_identity }}
-          cosign_issuer: ${{ inputs.cosign_issuer }}
-          cosign_base_issuer: ${{ inputs.cosign_base_issuer }}
-          verify_base: ${{ inputs.verify_base }}
+          cosign-identity: ${{ inputs.cosign-identity }}
+          cosign-base-identity: ${{ inputs.cosign-base-identity }}
+          cosign-issuer: ${{ inputs.cosign-issuer }}
+          cosign-base-issuer: ${{ inputs.cosign-base-issuer }}
+          verify-base: ${{ inputs.verify-base }}
 
   manifest:
     name: Publish multi-arch manifest
-    if: inputs.push && inputs.multi_arch
+    if: inputs.push && inputs.multi-arch
     needs: [prepare, build]
     runs-on: ubuntu-latest
     permissions:
@@ -207,10 +207,10 @@ jobs:
         shell: bash
         env:
           ARCHITECTURES: ${{ inputs.architectures }}
-          REGISTRY_PREFIX: ${{ inputs.registry_prefix }}
-          IMAGE_NAME: ${{ inputs.image_name }}
-          IMAGE_TAG: ${{ inputs.image_tag }}
-          IMAGE_EXTRA_TAGS: ${{ inputs.image_extra_tags }}
+          REGISTRY_PREFIX: ${{ inputs.registry-prefix }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+          IMAGE_TAG: ${{ inputs.image-tag }}
+          IMAGE_EXTRA_TAGS: ${{ inputs.image-extra-tags }}
           COSIGN: ${{ inputs.cosign }}
         run: |
           source_images=()
@@ -235,3 +235,4 @@ jobs:
             digest=$(skopeo inspect --raw --no-tags "docker://${tags[0]}" | skopeo manifest-digest /dev/stdin)
             cosign sign --yes "${REGISTRY_PREFIX}/${IMAGE_NAME}@${digest}"
           fi
+

@@ -6,13 +6,13 @@ description: |
 inputs:
   image:
     description: Container image reference to verify
-  cosign_identity:
+  cosign-identity:
     description: Certificate identity regexp for verifying cache images (defaults to current repo pattern)
     required: false
     default: ""
-  cosign_issuer:
+  cosign-issuer:
     description: Certificate OIDC issuer regexp for all cosign verification
-  allow_failure:
+  allow-failure:
     description: Whether to allow failure of this step (defaults to false). Only shows a warning if verification fails.
     required: false
     default: "false"
@@ -30,9 +30,9 @@ runs:
       shell: bash
       env:
         IMAGE_REF: ${{ inputs.image }}
-        COSIGN_IDENTITY: ${{ inputs.cosign_identity }}
-        COSIGN_ISSUER: ${{ inputs.cosign_issuer }}
-        ALLOW_FAILURE: ${{ inputs.allow_failure }}
+        COSIGN_IDENTITY: ${{ inputs.cosign-identity }}
+        COSIGN_ISSUER: ${{ inputs.cosign-issuer }}
+        ALLOW_FAILURE: ${{ inputs.allow-failure }}
       run: |
         echo "::group::Verifying image: ${IMAGE_REF}"
 
