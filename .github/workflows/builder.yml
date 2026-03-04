@@ -120,8 +120,8 @@ jobs:
           fi
 
           matrix=$(jq -c '{include: [.[] |
-            if . == "amd64" then {arch: "amd64", os: "ubuntu-24.04", platform: "linux/amd64"}
-            elif . == "aarch64" then {arch: "aarch64", os: "ubuntu-24.04-arm", platform: "linux/arm64"}
+            if . == "amd64" then {arch: "amd64", os: "ubuntu-24.04"}
+            elif . == "aarch64" then {arch: "aarch64", os: "ubuntu-24.04-arm"}
             end
           ]}' <<< "${ARCHITECTURES}")
           echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
@@ -167,7 +167,6 @@ jobs:
           image-tag: ${{ inputs.image-tag }}
           image-extra-tags: ${{ inputs.image-extra-tags }}
           arch: ${{ matrix.arch }}
-          platform: ${{ matrix.platform }}
           push: ${{ inputs.push }}
           cache-scope: ${{ inputs.cache-scope }}
           cache-image-tag: ${{ inputs.cache-image-tag }}

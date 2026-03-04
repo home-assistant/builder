@@ -5,9 +5,6 @@ inputs:
   arch:
     description: Architecture to build (e.g., "amd64")
     required: true
-  platform:
-    description: Platform string (e.g., "linux/amd64")
-    required: true
   image:
     description: Full image name without tag (e.g., "ghcr.io/home-assistant/amd64-base")
     required: true
@@ -173,10 +170,11 @@ runs:
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
 
+        output="oci-mediatypes=true"
         if [[ "${PUSH}" == "true" ]]; then
-          echo output="type=image,push=true,compression=zstd,compression-level=9,force-compression=true,oci-mediatypes=true" >> "$GITHUB_OUTPUT"
+          echo "output=type=image,compression=zstd,compression-level=9,force-compression=true,${output}" >> "$GITHUB_OUTPUT"
         else
-          echo output="type=docker" >> "$GITHUB_OUTPUT"
+          echo "output=type=docker,${output}" >> "$GITHUB_OUTPUT"
         fi
 
         if [[ -z "${CACHE_SCOPE}" ]]; then
@@ -208,7 +206,6 @@ runs:
       with:
         context: ${{ env.CONTEXT }} # zizmor: ignore[template-injection]
         file: ${{ steps.options.outputs.file }}
-        platforms: ${{ inputs.platform }}
         pull: true
         push: ${{ inputs.push == 'true' }}
         load: ${{ inputs.push != 'true' }}
