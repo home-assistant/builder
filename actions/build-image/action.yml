@@ -108,7 +108,7 @@ runs:
     - name: Verify cache image ${{ inputs.image }}:${{ inputs.cache-image-tag }}
       if: inputs.cosign == 'true'
       id: verify_cache
-      uses: ./.github/actions/cosign-verify
+      uses: home-assistant/builder/actions/cosign-verify@gha-builder
       with:
         image: ${{ inputs.image }}:${{ inputs.cache-image-tag }}
         cosign-identity: ${{ inputs.cosign-identity || env.DEFAULT_COSIGN_IDENTITY }}
@@ -119,7 +119,7 @@ runs:
 
     - name: Verify base image
       if: inputs.push == 'true' && inputs.verify-base != '' && inputs.cosign-base-identity != ''
-      uses: ./.github/actions/cosign-verify
+      uses: home-assistant/builder/actions/cosign-verify@gha-builder
       with:
         image: ${{ inputs.verify-base }}
         cosign-identity: ${{ inputs.cosign-base-identity }}

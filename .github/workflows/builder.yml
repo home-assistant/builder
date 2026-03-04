@@ -155,7 +155,7 @@ jobs:
 
       - name: Build image
         id: build
-        uses: ./.github/actions/build-image
+        uses: home-assistant/builder/actions/build-image@gha-builder
         with:
           image: ${{ steps.image.outputs.name }}
           image-tag: ${{ inputs.image-tag }}
