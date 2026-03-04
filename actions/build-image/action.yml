@@ -33,6 +33,10 @@ inputs:
     description: Whether to push images to registry
     required: false
     default: "false"
+  cache-gha:
+    description: Whether to use GitHub Actions cache for build caching
+    required: false
+    default: "true"
   cache-scope:
     description: Scope for build cache sharing (defaults to architecture, set if building multiple images from a single repo)
     required: false
@@ -136,6 +140,7 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         BUILD_ARGS_INPUT: ${{ inputs.build-args }}
         COSIGN_ENABLED: ${{ inputs.cosign }}
+        CACHE_GHA: ${{ inputs.cache-gha }}
         CACHE_SCOPE: ${{ inputs.cache-scope }}
         CACHE_IMAGE_TAG: ${{ inputs.cache-image-tag }}
         CACHE_VERIFIED: ${{ steps.verify_cache.outputs.verified }}
@@ -184,13 +189,26 @@ runs:
         fi
         echo cache_scope="${cache_scope}" >> "$GITHUB_OUTPUT"
 
-        cache_from=("type=gha,scope=${cache_scope}")
+        cache_from=()
+        if [[ "${CACHE_GHA}" == "true" ]]; then
+          cache_from+=("type=gha,scope=${cache_scope}")
+        fi
         if [[ "${COSIGN_ENABLED}" != "true" ]] || [[ "${CACHE_VERIFIED}" == "true" ]]; then
           cache_from+=("type=registry,ref=${IMAGE}:${CACHE_IMAGE_TAG}")
         fi
         {
           echo "cache_from<<EOF"
           printf '%s\n' "${cache_from[@]}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        cache_to=("type=inline")
+        if [[ "${CACHE_GHA}" == "true" ]]; then
+          cache_to+=("type=gha,mode=max,scope=${cache_scope}")
+        fi
+        {
+          echo "cache_to<<EOF"
+          printf '%s\n' "${cache_to[@]}"
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
 
@@ -212,9 +230,7 @@ runs:
         build-args: ${{ steps.options.outputs.build_args }}
         tags: ${{ steps.options.outputs.tags }}
         outputs: ${{ steps.options.outputs.output }}
-        cache-to: |
-          type=inline
-          type=gha,mode=max,scope=${{ steps.options.outputs.cache_scope }}
+        cache-to: ${{ steps.options.outputs.cache_to }}
         cache-from: ${{ steps.options.outputs.cache_from }}
 
       env:

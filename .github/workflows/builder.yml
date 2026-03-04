@@ -52,6 +52,11 @@ on:
         required: false
         default: false
         type: boolean
+      cache-gha:
+        description: Whether to use GitHub Actions cache for build caching
+        required: false
+        default: true
+        type: boolean
       cache-scope:
         description: Scope for build cache sharing (defaults to architecture, set if building multiple images from a single repo)
         required: false
@@ -168,6 +173,7 @@ jobs:
           image-extra-tags: ${{ inputs.image-extra-tags }}
           arch: ${{ matrix.arch }}
           push: ${{ inputs.push }}
+          cache-gha: ${{ inputs.cache-gha }}
           cache-scope: ${{ inputs.cache-scope }}
           cache-image-tag: ${{ inputs.cache-image-tag }}
           docker-password: ${{ secrets.GITHUB_TOKEN }}
