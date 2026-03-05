@@ -30,7 +30,7 @@ on:
         default: ""
         type: string
       context:
-        description: Build context (usually the directory with Dockerfile)
+        description: Build context path (usually the directory with Dockerfile)
         required: true
         type: string
       file:
@@ -176,7 +176,7 @@ jobs:
           cache-gha: ${{ inputs.cache-gha }}
           cache-scope: ${{ inputs.cache-scope }}
           cache-image-tag: ${{ inputs.cache-image-tag }}
-          docker-password: ${{ secrets.GITHUB_TOKEN }}
+          container-password: ${{ secrets.GITHUB_TOKEN }}
           context: ${{ inputs.context }}
           file: ${{ inputs.file }}
           version: ${{ inputs.version }}

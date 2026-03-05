@@ -16,7 +16,7 @@ inputs:
     required: false
     default: ""
   context:
-    description: Build context (usually the directory with Dockerfile)
+    description: Build context path (usually the directory with Dockerfile)
     required: true
   file:
     description: Dockerfile path (defaults to "Dockerfile" in the context directory)
@@ -49,16 +49,16 @@ inputs:
     description: Tag of the image containing BuildKit inline cache metadata
     required: false
     default: "latest"
-  docker-registry:
-    description: Docker registry (e.g., "ghcr.io")
+  container-registry:
+    description: Container registry (e.g., "ghcr.io")
     required: false
     default: "ghcr.io"
-  docker-username:
-    description: Username for Docker registry (defaults to repository owner)
+  container-username:
+    description: Username for container registry (defaults to repository owner)
     required: false
     default: ${{ github.repository_owner }}
-  docker-password:
-    description: Password for Docker registry (use secrets.GITHUB_TOKEN for GHCR)
+  container-password:
+    description: Password for container registry (use secrets.GITHUB_TOKEN for GHCR)
     required: true
   cosign:
     description: Whether to sign images with Cosign
@@ -93,13 +93,13 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Login to Docker Registry
+    - name: Login to container registry
       if: inputs.push == 'true'
       uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
       with:
-        registry: ${{ inputs.docker-registry }}
-        username: ${{ inputs.docker-username }}
-        password: ${{ inputs.docker-password }}
+        registry: ${{ inputs.container-registry }}
+        username: ${{ inputs.container-username }}
+        password: ${{ inputs.container-password }}
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
