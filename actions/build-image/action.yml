@@ -66,12 +66,8 @@ inputs:
   image:
     description: Full image name without tag (e.g., "ghcr.io/home-assistant/amd64-base")
     required: true
-  image-extra-tags:
-    description: Additional tags, one per line
-    required: false
-    default: ""
-  image-tag:
-    description: Main image tag (e.g., "3.23")
+  image-tags:
+    description: Image tags, one per line
     required: true
   load:
     description: Whether to load the built image into the Docker engine
@@ -136,8 +132,7 @@ runs:
       shell: bash
       env:
         IMAGE: ${{ inputs.image }}
-        IMAGE_TAG: ${{ inputs.image-tag }}
-        IMAGE_EXTRA_TAGS: ${{ inputs.image-extra-tags }}
+        IMAGE_TAGS: ${{ inputs.image-tags }}
         PUSH: ${{ inputs.push }}
         LOAD: ${{ inputs.load }}
         VERSION: ${{ inputs.version }}
@@ -153,10 +148,9 @@ runs:
         CONTEXT: ${{ inputs.context }}
       run: |
         tags=()
-        tags+=("${IMAGE}:${IMAGE_TAG}")
         while IFS= read -r tag; do
           [[ -n "$tag" ]] && tags+=("${IMAGE}:${tag}")
-        done <<< "${IMAGE_EXTRA_TAGS}"
+        done <<< "${IMAGE_TAGS}"
 
         {
           echo "tags<<EOF"

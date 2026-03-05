@@ -66,17 +66,12 @@ on:
         required: false
         default: ""
         type: string
-      image-extra-tags:
-        description: Additional tags, one per line
-        required: false
-        default: ""
-        type: string
       image-name:
         description: Image name without a tag (e.g., "base-python")
         required: true
         type: string
-      image-tag:
-        description: Base image tag (e.g., "3.23")
+      image-tags:
+        description: Image tags, one per line
         required: true
         type: string
       multi-arch:
@@ -183,8 +178,7 @@ jobs:
           cosign-issuer: ${{ inputs.cosign-issuer }}
           file: ${{ inputs.file }}
           image: ${{ steps.image.outputs.name }}
-          image-extra-tags: ${{ inputs.image-extra-tags }}
-          image-tag: ${{ inputs.image-tag }}
+          image-tags: ${{ inputs.image-tags }}
           push: ${{ inputs.push }}
           version: ${{ inputs.version }}
 
@@ -220,19 +214,23 @@ jobs:
           ARCHITECTURES: ${{ inputs.architectures }}
           REGISTRY_PREFIX: ${{ inputs.registry-prefix }}
           IMAGE_NAME: ${{ inputs.image-name }}
-          IMAGE_TAG: ${{ inputs.image-tag }}
-          IMAGE_EXTRA_TAGS: ${{ inputs.image-extra-tags }}
+          IMAGE_TAGS: ${{ inputs.image-tags }}
           COSIGN: ${{ inputs.cosign }}
         run: |
+          image_tags=()
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] && image_tags+=("${tag}")
+          done <<< "${IMAGE_TAGS}"
+
           source_images=()
           for arch in $(jq -r '.[]' <<< "${ARCHITECTURES}"); do
-            source_images+=("${REGISTRY_PREFIX}/${arch}-${IMAGE_NAME}:${IMAGE_TAG}")
+            source_images+=("${REGISTRY_PREFIX}/${arch}-${IMAGE_NAME}:${image_tags[0]}")
           done
 
-          tags=("${REGISTRY_PREFIX}/${IMAGE_NAME}:${IMAGE_TAG}")
-          while IFS= read -r tag; do
-            [[ -n "$tag" ]] && tags+=("${REGISTRY_PREFIX}/${IMAGE_NAME}:${tag}")
-          done <<< "${IMAGE_EXTRA_TAGS}"
+          tags=()
+          for tag in "${image_tags[@]}"; do
+            tags+=("${REGISTRY_PREFIX}/${IMAGE_NAME}:${tag}")
+          done
 
           tag_args=()
           for tag in "${tags[@]}"; do
