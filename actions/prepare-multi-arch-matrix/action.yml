@@ -14,7 +14,8 @@ inputs:
     default: "true"
   registry-prefix:
     description: Registry and namespace prefix (e.g., "ghcr.io/owner")
-    required: true
+    required: false
+    default: ghcr.io/${{ github.repository_owner }}
 
 outputs:
   matrix:
