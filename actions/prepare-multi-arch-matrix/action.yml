@@ -1,0 +1,54 @@
+name: Prepare multi-arch build matrix
+description: Validate architectures and build a matrix with arch, runner OS, and full image name
+
+inputs:
+  architectures:
+    description: Architectures to build (JSON array, e.g., '["amd64", "aarch64"]')
+    required: true
+  image-name:
+    description: Image name without a tag (e.g., "base-python")
+    required: true
+  multi-arch:
+    description: Prefix per-arch image names with architecture (required for multiple architectures)
+    required: false
+    default: "true"
+  registry-prefix:
+    description: Registry and namespace prefix (e.g., "ghcr.io/owner")
+    required: true
+
+outputs:
+  matrix:
+    description: JSON matrix with arch, os, and image name for each architecture
+    value: ${{ steps.set-matrix.outputs.matrix }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build matrix from architectures
+      id: set-matrix
+      shell: bash
+      env:
+        ARCHITECTURES: ${{ inputs.architectures }}
+        MULTI_ARCH: ${{ inputs.multi-arch }}
+        REGISTRY_PREFIX: ${{ inputs.registry-prefix }}
+        IMAGE_NAME: ${{ inputs.image-name }}
+      run: |
+        arch_count=$(jq 'length' <<< "${ARCHITECTURES}")
+        if [[ "${MULTI_ARCH}" != "true" ]] && (( arch_count > 1 )); then
+          echo "::error::multi-arch is false but ${arch_count} architectures were specified; use multi-arch: true or pass a single architecture"
+          exit 1
+        fi
+
+        invalid_arches=$(jq -r '[.[] | select(. != "amd64" and . != "aarch64")] | unique | join(", ")' <<< "${ARCHITECTURES}")
+        if [[ -n "${invalid_arches}" ]]; then
+          echo "::error::Unsupported architecture(s): ${invalid_arches}. Supported values: amd64, aarch64"
+          exit 1
+        fi
+
+        matrix=$(jq -c --arg prefix "${REGISTRY_PREFIX}" --arg name "${IMAGE_NAME}" --arg multi "${MULTI_ARCH}" \
+          '{include: [.[] |
+            (if . == "amd64" then "ubuntu-24.04" elif . == "aarch64" then "ubuntu-24.04-arm" end) as $os |
+            (if $multi == "true" then "\($prefix)/\(.)-\($name)" else "\($prefix)/\($name)" end) as $image |
+            {arch: ., os: $os, image: $image}
+          ]}' <<< "${ARCHITECTURES}")
+        echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
