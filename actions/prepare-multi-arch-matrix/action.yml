@@ -53,3 +53,4 @@ runs:
             {arch: ., os: $os, image: $image}
           ]}' <<< "${ARCHITECTURES}")
         echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+        jq . <<< "${matrix}"
