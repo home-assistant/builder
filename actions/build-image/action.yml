@@ -21,14 +21,14 @@ inputs:
     description: Tag of the image containing BuildKit inline cache metadata
     required: false
     default: "latest"
-  container-password:
+  container-registry-password:
     description: Password for container registry (use secrets.GITHUB_TOKEN for GHCR)
     required: true
   container-registry:
     description: Container registry (e.g., "ghcr.io")
     required: false
     default: "ghcr.io"
-  container-username:
+  container-registry-username:
     description: Username for container registry (defaults to repository owner)
     required: false
     default: ${{ github.repository_owner }}
@@ -94,8 +94,8 @@ runs:
       uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
       with:
         registry: ${{ inputs.container-registry }}
-        username: ${{ inputs.container-username }}
-        password: ${{ inputs.container-password }}
+        username: ${{ inputs.container-registry-username }}
+        password: ${{ inputs.container-registry-password }}
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0

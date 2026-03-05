@@ -168,7 +168,7 @@ jobs:
           cache-gha: ${{ inputs.cache-gha }}
           cache-gha-scope: ${{ inputs.cache-gha-scope }}
           cache-image-tag: ${{ inputs.cache-image-tag }}
-          container-password: ${{ secrets.GITHUB_TOKEN }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           context: ${{ inputs.context }}
           cosign: ${{ inputs.cosign }}
           cosign-base-identity: ${{ inputs.cosign-base-identity }}
