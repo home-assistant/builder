@@ -6,12 +6,15 @@ description: |
 inputs:
   image:
     description: Container image reference to verify
+    required: true
   cosign-identity:
     description: Certificate identity regexp for verifying cache images (defaults to current repo pattern)
     required: false
     default: ""
   cosign-issuer:
     description: Certificate OIDC issuer regexp for all cosign verification
+    required: false
+    default: "https://token.actions.githubusercontent.com"
   allow-failure:
     description: Whether to allow failure of this step (defaults to false). Only shows a warning if verification fails.
     required: false
