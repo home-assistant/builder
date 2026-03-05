@@ -5,43 +5,15 @@ inputs:
   arch:
     description: Architecture to build (e.g., "amd64")
     required: true
-  image:
-    description: Full image name without tag (e.g., "ghcr.io/home-assistant/amd64-base")
-    required: true
-  image-tag:
-    description: Main image tag (e.g., "3.23")
-    required: true
-  image-extra-tags:
-    description: Additional tags, one per line
-    required: false
-    default: ""
-  context:
-    description: Build context path (usually the directory with Dockerfile)
-    required: true
-  file:
-    description: Dockerfile path (defaults to "Dockerfile" in the context directory)
-    required: false
-    default: ""
-  version:
-    description: Image version label
-    required: true
   build-args:
     description: Additional build arguments (key=value format, one per line)
     required: false
     default: ""
-  push:
-    description: Whether to push images to registry
-    required: false
-    default: "false"
-  load:
-    description: Whether to load the built image into the Docker engine
-    required: false
-    default: "false"
   cache-gha:
     description: Whether to use GitHub Actions cache for build caching
     required: false
     default: "true"
-  cache-scope:
+  cache-gha-scope:
     description: Scope for build cache sharing (defaults to architecture, set if building multiple images from a single repo)
     required: false
     default: ""
@@ -49,6 +21,9 @@ inputs:
     description: Tag of the image containing BuildKit inline cache metadata
     required: false
     default: "latest"
+  container-password:
+    description: Password for container registry (use secrets.GITHUB_TOKEN for GHCR)
+    required: true
   container-registry:
     description: Container registry (e.g., "ghcr.io")
     required: false
@@ -57,25 +32,13 @@ inputs:
     description: Username for container registry (defaults to repository owner)
     required: false
     default: ${{ github.repository_owner }}
-  container-password:
-    description: Password for container registry (use secrets.GITHUB_TOKEN for GHCR)
+  context:
+    description: Build context path (usually the directory with Dockerfile)
     required: true
   cosign:
     description: Whether to sign images with Cosign
     required: false
     default: "true"
-  cosign-identity:
-    description: Certificate identity regexp for verifying cache images (defaults to current repo pattern)
-    required: false
-    default: ""
-  cosign-issuer:
-    description: Certificate OIDC issuer regexp for all cosign verification
-    required: false
-    default: "https://token.actions.githubusercontent.com"
-  verify-base:
-    description: Base image reference to verify with cosign before building
-    required: false
-    default: ""
   cosign-base-identity:
     description: Certificate identity regexp for verifying the base (FROM) image
     required: false
@@ -84,6 +47,43 @@ inputs:
     description: Certificate OIDC issuer regexp for base image verification (defaults to cosign-issuer)
     required: false
     default: ""
+  cosign-base-verify:
+    description: Base image reference to verify with cosign before building
+    required: false
+    default: ""
+  cosign-identity:
+    description: Certificate identity regexp for verifying cache images (defaults to current repo pattern)
+    required: false
+    default: ""
+  cosign-issuer:
+    description: Certificate OIDC issuer regexp for all cosign verification
+    required: false
+    default: "https://token.actions.githubusercontent.com"
+  file:
+    description: Dockerfile path (defaults to "Dockerfile" in the context directory)
+    required: false
+    default: ""
+  image:
+    description: Full image name without tag (e.g., "ghcr.io/home-assistant/amd64-base")
+    required: true
+  image-extra-tags:
+    description: Additional tags, one per line
+    required: false
+    default: ""
+  image-tag:
+    description: Main image tag (e.g., "3.23")
+    required: true
+  load:
+    description: Whether to load the built image into the Docker engine
+    required: false
+    default: "false"
+  push:
+    description: Whether to push images to registry
+    required: false
+    default: "false"
+  version:
+    description: Image version label
+    required: true
 
 outputs:
   digest:
@@ -105,7 +105,7 @@ runs:
       uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
     - name: Install Cosign
-      if: inputs.cosign == 'true' || inputs.verify-base != ''
+      if: inputs.cosign == 'true' || inputs.cosign-base-verify != ''
       uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
       with:
         cosign-release: "v2.5.3"
@@ -123,10 +123,10 @@ runs:
         DEFAULT_COSIGN_IDENTITY: https://github.com/${{ github.repository }}/.*
 
     - name: Verify base image
-      if: inputs.push == 'true' && inputs.verify-base != '' && inputs.cosign-base-identity != ''
+      if: inputs.push == 'true' && inputs.cosign-base-verify != '' && inputs.cosign-base-identity != ''
       uses: home-assistant/builder/actions/cosign-verify@gha-builder
       with:
-        image: ${{ inputs.verify-base }}
+        image: ${{ inputs.cosign-base-verify }}
         cosign-identity: ${{ inputs.cosign-base-identity }}
         cosign-issuer: ${{ inputs.cosign-base-issuer || inputs.cosign-issuer }}
         allow-failure: false
@@ -146,7 +146,7 @@ runs:
         BUILD_ARGS_INPUT: ${{ inputs.build-args }}
         COSIGN_ENABLED: ${{ inputs.cosign }}
         CACHE_GHA: ${{ inputs.cache-gha }}
-        CACHE_SCOPE: ${{ inputs.cache-scope }}
+        CACHE_SCOPE: ${{ inputs.cache-gha-scope }}
         CACHE_IMAGE_TAG: ${{ inputs.cache-image-tag }}
         CACHE_VERIFIED: ${{ steps.verify_cache.outputs.verified }}
         FILE_INPUT: ${{ inputs.file }}
