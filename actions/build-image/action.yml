@@ -192,10 +192,11 @@ runs:
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
 
+        output_params="compression=zstd,compression-level=9,force-compression=true,oci-mediatypes=true"
         if [[ "${PUSH}" == "true" ]]; then
-          echo "output=type=image,compression=zstd,compression-level=9,force-compression=true,oci-mediatypes=true" >> "$GITHUB_OUTPUT"
+          echo "output=type=image,${output_params}" >> "$GITHUB_OUTPUT"
         elif [[ "${LOAD}" == "true" ]]; then
-          echo "output=type=docker,oci-mediatypes=true" >> "$GITHUB_OUTPUT"
+          echo "output=type=docker,${output_params}" >> "$GITHUB_OUTPUT"
         fi
 
         if [[ -z "${CACHE_SCOPE}" ]]; then
