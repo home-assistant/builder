@@ -1,5 +1,5 @@
 name: Build image
-description: Build, push, and optionally sign a single-arch container image
+description: Build, and optionally push and sign a single-arch container image
 
 inputs:
   arch:
