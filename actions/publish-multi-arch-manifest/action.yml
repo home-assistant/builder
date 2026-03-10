@@ -1,0 +1,95 @@
+name: Publish multi-arch manifest
+description: Create a multi-arch manifest from per-architecture images and optionally sign it
+
+inputs:
+  architectures:
+    description: Architectures (JSON array, e.g., '["amd64", "aarch64"]')
+    required: true
+  container-registry:
+    description: Container registry (e.g., "ghcr.io")
+    required: false
+    default: "ghcr.io"
+  container-registry-password:
+    description: Password for container registry (use secrets.GITHUB_TOKEN for GHCR)
+    required: true
+  container-registry-username:
+    description: Username for container registry (defaults to repository owner)
+    required: false
+    default: ${{ github.repository_owner }}
+  cosign:
+    description: Whether to sign the manifest with Cosign
+    required: false
+    default: "true"
+  image-name:
+    description: Image name without a tag (e.g., "base-python")
+    required: true
+  image-tags:
+    description: Image tags, one per line (first tag is the primary tag used for per-arch image lookup)
+    required: true
+  registry-prefix:
+    description: Registry and namespace prefix (e.g., "ghcr.io/owner")
+    required: false
+    default: ghcr.io/${{ github.repository_owner }}
+
+runs:
+  using: composite
+  steps:
+    - name: Login to container registry
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+      with:
+        registry: ${{ inputs.container-registry }}
+        username: ${{ inputs.container-registry-username }}
+        password: ${{ inputs.container-registry-password }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      with:
+        # TODO: remove pinning once >=v0.32.1 is available in https://github.com/actions/runner
+        version: v0.32.1
+
+    - name: Install Cosign
+      if: inputs.cosign == 'true'
+      uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+      with:
+        cosign-release: "v2.5.3"
+
+    - name: Create multi-arch manifest and sign it
+      shell: bash
+      env:
+        ARCHITECTURES: ${{ inputs.architectures }}
+        REGISTRY_PREFIX: ${{ inputs.registry-prefix }}
+        IMAGE_NAME: ${{ inputs.image-name }}
+        IMAGE_TAGS: ${{ inputs.image-tags }}
+        COSIGN: ${{ inputs.cosign }}
+      run: |
+        image_tags=()
+        while IFS= read -r tag; do
+          [[ -n "$tag" ]] && image_tags+=("${tag}")
+        done <<< "${IMAGE_TAGS}"
+
+        source_images=()
+        for arch in $(jq -r '.[]' <<< "${ARCHITECTURES}"); do
+          source_images+=("${REGISTRY_PREFIX}/${arch}-${IMAGE_NAME}:${image_tags[0]}")
+        done
+
+        tags=()
+        for tag in "${image_tags[@]}"; do
+          tags+=("${REGISTRY_PREFIX}/${IMAGE_NAME}:${tag}")
+        done
+
+        tag_args=()
+        for tag in "${tags[@]}"; do
+          tag_args+=("--tag" "${tag}")
+        done
+
+        metadata_file="$(mktemp)"
+
+        docker buildx imagetools create \
+          --metadata-file "${metadata_file}" \
+          "${tag_args[@]}" \
+          "${source_images[@]}"
+
+        if [[ "${COSIGN}" == "true" ]]; then
+          digest="$(jq -r '.["containerimage.descriptor"].digest' "${metadata_file}")"
+          cosign sign --yes "${REGISTRY_PREFIX}/${IMAGE_NAME}@${digest}"
+        fi
