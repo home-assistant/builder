@@ -13,6 +13,10 @@ inputs:
     description: "Define the builder image archictecture (default: amd64)"
     required: false
     default: "amd64"
+  namespace:
+    description: "Define alternative namespace to use when image not found at this repository"
+    required: true
+    default: "home-assistant"
 runs:
   using: "composite"
   steps:
@@ -31,18 +35,28 @@ runs:
         echo "version=${input}" >> "$GITHUB_OUTPUT"
 
     - shell: bash
+      id: namespace
+      run: |
+        if docker manifest inspect ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}-builder:${{ steps.version.outputs.version }}
+        then
+          echo "namespace=${{ github.repository_owner }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "namespace=${{ inputs.namespace }}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - shell: bash
       if: ${{ inputs.pull == 'true' }}
       run: |
-        docker pull ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }}
+        docker pull ghcr.io/${{ steps.namespace.outputs.namespace }}/${{ inputs.image }}-builder:${{ steps.version.outputs.version }}
         cosign verify \
           --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-          --certificate-identity-regexp https://github.com/home-assistant/builder/.* \
-          ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }}
+          --certificate-identity-regexp https://github.com/${{ steps.namespace.outputs.namespace }}/builder/.* \
+          ghcr.io/${{ steps.namespace.outputs.namespace }}/${{ inputs.image }}-builder:${{ steps.version.outputs.version }}
 
     - shell: bash
       id: builder
       run: |
-        builder=$(docker images ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }} -q)
+        builder=$(docker images ghcr.io/${{ steps.namespace.outputs.namespace }}/${{ inputs.image }}-builder:${{ steps.version.outputs.version }} -q)
         echo "id=$builder" >> "$GITHUB_OUTPUT"
 
     - shell: bash
@@ -56,7 +70,7 @@ runs:
             -v ~/.docker:/root/.docker \
             -v ${{ github.workspace }}:/data \
             --env-file "${{ github.action_path }}/env_file" \
-            ghcr.io/home-assistant/${{ inputs.image }}-builder:${{ steps.version.outputs.version }} \
+            ghcr.io/${{ steps.namespace.outputs.namespace }}/${{ inputs.image }}-builder:${{ steps.version.outputs.version }} \
             ${{ inputs.args }}
 
     - shell: bash
