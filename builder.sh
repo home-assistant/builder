@@ -7,6 +7,7 @@ set +u
 
 #### Variable ####
 
+NAMESPACE=
 DOCKER_TIMEOUT=20
 DOCKER_PID=-1
 DOCKER_HUB=
@@ -102,6 +103,8 @@ Options:
        Use same tag as cache tag instead latest.
     --cache-tag <TAG>
        Use a custom tag for the build cache.
+    -n, --namespace <NAMESPACE>
+       Set or overwrite name of personal account or organization to build from.
     -d, --docker-hub <DOCKER_REPOSITORY>
        Set or overwrite the docker repository.
     --docker-hub-check
@@ -438,6 +441,8 @@ function build_base() {
     if ! bashio::var.has_value "${raw_image}"; then
         bashio::log.error "Can't find the image tag on build.json"
         return 1
+    elif bashio::var.has_value "${NAMESPACE}"; then
+        raw_image="${raw_image%%/*}/${NAMESPACE}/${raw_image##*/}"
     fi
     repository="${raw_image%/*}"
     image="${raw_image##*/}"
@@ -543,6 +548,9 @@ function build_addon() {
 
     # Read data from image
     if [ -n "$raw_image" ]; then
+        if bashio::var.has_value "${NAMESPACE}"; then
+            raw_image="${raw_image%%/*}/${NAMESPACE}/${raw_image##*/}"
+        fi
         repository="${raw_image%/*}"
         image="${raw_image##*/}"
     fi
@@ -596,6 +604,8 @@ function build_generic() {
     if ! bashio::var.has_value "$raw_image"; then
         bashio::log.error "Can't find the image tag on build.json"
         return 1
+    elif bashio::var.has_value "${NAMESPACE}"; then
+        raw_image="${raw_image%%/*}/${NAMESPACE}/${raw_image##*/}"
     fi
     repository="${raw_image%/*}"
     image="${raw_image##*/}"
@@ -658,6 +668,11 @@ function build_machine() {
         docker_cli+=("--file" "${TARGET}/${build_machine}")
     fi
 
+    if bashio::var.has_value "${raw_image}"; then
+        if bashio::var.has_value "${NAMESPACE}"; then
+            raw_image="${raw_image%%/*}/${NAMESPACE}/${raw_image##*/}"
+        fi
+    fi
     repository="${raw_image%/*}"
     image="${raw_image##*/}"
 
@@ -874,6 +889,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --version-from)
             VERSION_FROM=$2
+            shift
+            ;;
+        -n|--namespace)
+            NAMESPACE=$2
             shift
             ;;
         --docker-hub-check)
