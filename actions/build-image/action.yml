@@ -167,6 +167,7 @@ runs:
 
         build_args=()
         build_args+=("BUILD_ARCH=${ARCH}")
+        build_args+=("BUILD_VERSION=${VERSION}")
         while IFS= read -r line; do
           [[ -n "$line" ]] && build_args+=("$line")
         done <<< "${BUILD_ARGS_INPUT}"
