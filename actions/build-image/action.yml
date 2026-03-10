@@ -69,6 +69,10 @@ inputs:
   image-tags:
     description: Image tags, one per line
     required: true
+  labels:
+    description: Additional OCI labels (key=value format, one per line)
+    required: false
+    default: ""
   load:
     description: Whether to load the built image into the Docker engine
     required: false
@@ -139,6 +143,7 @@ runs:
         ARCH: ${{ inputs.arch }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         BUILD_ARGS_INPUT: ${{ inputs.build-args }}
+        LABELS_INPUT: ${{ inputs.labels }}
         COSIGN_ENABLED: ${{ inputs.cosign }}
         CACHE_GHA: ${{ inputs.cache-gha }}
         CACHE_SCOPE: ${{ inputs.cache-gha-scope }}
@@ -161,16 +166,28 @@ runs:
         build_date="$(date --rfc-3339=seconds --utc)"
 
         build_args=()
-        build_args+=("BUILD_VERSION=${VERSION}")
         build_args+=("BUILD_ARCH=${ARCH}")
-        build_args+=("BUILD_DATE=${build_date}")
-        build_args+=("BUILD_REPOSITORY=https://github.com/${GITHUB_REPOSITORY}")
         while IFS= read -r line; do
           [[ -n "$line" ]] && build_args+=("$line")
         done <<< "${BUILD_ARGS_INPUT}"
         {
           echo "build_args<<EOF"
           printf '%s\n' "${build_args[@]}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        labels=()
+        labels+=("io.hass.arch=${ARCH}")
+        labels+=("io.hass.version=${VERSION}")
+        labels+=("org.opencontainers.image.created=${build_date}")
+        labels+=("org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}")
+        labels+=("org.opencontainers.image.version=${VERSION}")
+        while IFS= read -r line; do
+          [[ -n "$line" ]] && labels+=("$line")
+        done <<< "${LABELS_INPUT}"
+        {
+          echo "labels<<EOF"
+          printf '%s\n' "${labels[@]}"
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
 
@@ -226,6 +243,7 @@ runs:
         push: ${{ inputs.push == 'true' }}
         load: ${{ inputs.load == 'true' }}
         build-args: ${{ steps.options.outputs.build_args }}
+        labels: ${{ steps.options.outputs.labels }}
         tags: ${{ steps.options.outputs.tags }}
         outputs: ${{ steps.options.outputs.output }}
         cache-to: ${{ steps.options.outputs.cache_to }}
