@@ -33,8 +33,9 @@ inputs:
     required: false
     default: ${{ github.repository_owner }}
   context:
-    description: Build context path (usually the directory with Dockerfile)
-    required: true
+    description: Build context path (usually the directory with Dockerfile, defaults to repository root)
+    required: false
+    default: "."
   cosign:
     description: Whether to sign images with Cosign
     required: false
