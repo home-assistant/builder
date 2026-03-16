@@ -1,0 +1,47 @@
+name: Prepare multi-arch build matrix
+description: Validate architectures and build a matrix with arch, runner OS, and full image name
+
+inputs:
+  architectures:
+    description: Architectures to build (JSON array, e.g., '["amd64", "aarch64"]')
+    required: true
+  image-name:
+    description: Image name without a tag (e.g., "base-python")
+    required: true
+  registry-prefix:
+    description: Registry and namespace prefix (e.g., "ghcr.io/owner")
+    required: false
+    default: ghcr.io/${{ github.repository_owner }}
+
+outputs:
+  matrix:
+    description: JSON matrix with arch, os, and image name for each architecture
+    value: ${{ steps.set-matrix.outputs.matrix }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build matrix from architectures
+      id: set-matrix
+      shell: bash
+      env:
+        ARCHITECTURES: ${{ inputs.architectures }}
+        REGISTRY_PREFIX: ${{ inputs.registry-prefix }}
+        IMAGE_NAME: ${{ inputs.image-name }}
+      run: |
+        matrix='{"include":[]}'
+        for arch in $(jq -r '.[]' <<< "${ARCHITECTURES}"); do
+          case "${arch}" in
+            amd64)   os="ubuntu-24.04" ;;
+            aarch64) os="ubuntu-24.04-arm" ;;
+            *)
+              echo "::error::Unsupported architecture: ${arch}. Supported values: amd64, aarch64"
+              exit 1
+              ;;
+          esac
+          matrix=$(jq -c --arg arch "$arch" --arg os "$os" --arg image "${REGISTRY_PREFIX}/${arch}-${IMAGE_NAME}" \
+            '.include += [{arch: $arch, os: $os, image: $image}]' <<< "${matrix}")
+        done
+
+        echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+        jq . <<< "${matrix}"

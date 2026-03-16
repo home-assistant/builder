@@ -1,0 +1,278 @@
+name: Build image
+description: Build, and optionally push and sign a single-arch container image
+
+inputs:
+  arch:
+    description: Architecture to build (e.g., "amd64")
+    required: true
+  build-args:
+    description: Additional build arguments (key=value format, one per line)
+    required: false
+    default: ""
+  cache-gha:
+    description: Whether to use GitHub Actions cache for build caching
+    required: false
+    default: "true"
+  cache-gha-scope:
+    description: Scope for build cache sharing (defaults to architecture, set if building multiple images from a single repo)
+    required: false
+    default: ""
+  cache-image-tag:
+    description: Tag of the image containing BuildKit inline cache metadata
+    required: false
+    default: "latest"
+  container-registry-password:
+    description: Password for container registry (use secrets.GITHUB_TOKEN for GHCR)
+    required: true
+  container-registry:
+    description: Container registry (e.g., "ghcr.io")
+    required: false
+    default: "ghcr.io"
+  container-registry-username:
+    description: Username for container registry (defaults to repository owner)
+    required: false
+    default: ${{ github.repository_owner }}
+  context:
+    description: Build context path (usually the directory with Dockerfile, defaults to repository root)
+    required: false
+    default: "."
+  cosign:
+    description: Whether to sign images with Cosign
+    required: false
+    default: "true"
+  cosign-base-identity:
+    description: Certificate identity regexp for verifying the base (FROM) image
+    required: false
+    default: ""
+  cosign-base-issuer:
+    description: Certificate OIDC issuer regexp for base image verification (defaults to cosign-issuer)
+    required: false
+    default: ""
+  cosign-base-verify:
+    description: Base image reference to verify with cosign before building
+    required: false
+    default: ""
+  cosign-identity:
+    description: Certificate identity regexp for verifying cache images (defaults to current repo pattern)
+    required: false
+    default: ""
+  cosign-issuer:
+    description: Certificate OIDC issuer regexp for all cosign verification
+    required: false
+    default: "https://token.actions.githubusercontent.com"
+  file:
+    description: Dockerfile path (defaults to "Dockerfile" in the context directory)
+    required: false
+    default: ""
+  image:
+    description: Full image name without tag (e.g., "ghcr.io/home-assistant/amd64-base")
+    required: true
+  image-tags:
+    description: Image tags, one per line
+    required: true
+  labels:
+    description: Additional OCI labels (key=value format, one per line)
+    required: false
+    default: ""
+  load:
+    description: Whether to load the built image into the Docker engine
+    required: false
+    default: "false"
+  push:
+    description: Whether to push images to registry
+    required: false
+    default: "false"
+  version:
+    description: Image version label
+    required: true
+
+outputs:
+  digest:
+    description: Image digest from the build
+    value: ${{ steps.build.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: Login to container registry
+      if: inputs.push == 'true'
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+      with:
+        registry: ${{ inputs.container-registry }}
+        username: ${{ inputs.container-registry-username }}
+        password: ${{ inputs.container-registry-password }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+    - name: Install Cosign
+      if: inputs.cosign == 'true' || inputs.cosign-base-verify != ''
+      uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+      with:
+        cosign-release: "v2.5.3"
+
+    - name: Verify cache image ${{ inputs.image }}:${{ inputs.cache-image-tag }}
+      if: inputs.cosign == 'true'
+      id: verify_cache
+      uses: home-assistant/builder/actions/cosign-verify@gha-builder
+      with:
+        image: ${{ inputs.image }}:${{ inputs.cache-image-tag }}
+        cosign-identity: ${{ inputs.cosign-identity || env.DEFAULT_COSIGN_IDENTITY }}
+        cosign-issuer: ${{ inputs.cosign-issuer }}
+        allow-failure: true
+      env:
+        DEFAULT_COSIGN_IDENTITY: https://github.com/${{ github.repository }}/.*
+
+    - name: Verify base image
+      if: inputs.push == 'true' && inputs.cosign-base-verify != '' && inputs.cosign-base-identity != ''
+      uses: home-assistant/builder/actions/cosign-verify@gha-builder
+      with:
+        image: ${{ inputs.cosign-base-verify }}
+        cosign-identity: ${{ inputs.cosign-base-identity }}
+        cosign-issuer: ${{ inputs.cosign-base-issuer || inputs.cosign-issuer }}
+        allow-failure: false
+
+    - name: Set build options
+      id: options
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        IMAGE_TAGS: ${{ inputs.image-tags }}
+        PUSH: ${{ inputs.push }}
+        LOAD: ${{ inputs.load }}
+        VERSION: ${{ inputs.version }}
+        ARCH: ${{ inputs.arch }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        BUILD_ARGS_INPUT: ${{ inputs.build-args }}
+        LABELS_INPUT: ${{ inputs.labels }}
+        COSIGN_ENABLED: ${{ inputs.cosign }}
+        CACHE_GHA: ${{ inputs.cache-gha }}
+        CACHE_SCOPE: ${{ inputs.cache-gha-scope }}
+        CACHE_IMAGE_TAG: ${{ inputs.cache-image-tag }}
+        CACHE_VERIFIED: ${{ steps.verify_cache.outputs.verified }}
+        FILE_INPUT: ${{ inputs.file }}
+        CONTEXT: ${{ inputs.context }}
+      run: |
+        tags=()
+        while IFS= read -r tag; do
+          [[ -n "$tag" ]] && tags+=("${IMAGE}:${tag}")
+        done <<< "${IMAGE_TAGS}"
+
+        {
+          echo "tags<<EOF"
+          printf '%s\n' "${tags[@]}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        build_date="$(date --rfc-3339=seconds --utc)"
+
+        build_args=()
+        build_args+=("BUILD_ARCH=${ARCH}")
+        build_args+=("BUILD_VERSION=${VERSION}")
+        while IFS= read -r line; do
+          [[ -n "$line" ]] && build_args+=("$line")
+        done <<< "${BUILD_ARGS_INPUT}"
+        {
+          echo "build_args<<EOF"
+          printf '%s\n' "${build_args[@]}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        labels=()
+        labels+=("io.hass.arch=${ARCH}")
+        labels+=("io.hass.version=${VERSION}")
+        labels+=("org.opencontainers.image.created=${build_date}")
+        labels+=("org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}")
+        labels+=("org.opencontainers.image.version=${VERSION}")
+        while IFS= read -r line; do
+          [[ -n "$line" ]] && labels+=("$line")
+        done <<< "${LABELS_INPUT}"
+        {
+          echo "labels<<EOF"
+          printf '%s\n' "${labels[@]}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        output_params="compression=zstd,compression-level=9,force-compression=true,oci-mediatypes=true"
+        if [[ "${PUSH}" == "true" ]]; then
+          echo "output=type=image,${output_params}" >> "$GITHUB_OUTPUT"
+        elif [[ "${LOAD}" == "true" ]]; then
+          echo "output=type=docker,${output_params}" >> "$GITHUB_OUTPUT"
+        fi
+
+        if [[ -z "${CACHE_SCOPE}" ]]; then
+          cache_scope="${ARCH}"
+        else
+          cache_scope="${ARCH}-${CACHE_SCOPE}"
+        fi
+        echo cache_scope="${cache_scope}" >> "$GITHUB_OUTPUT"
+
+        cache_from=()
+        if [[ "${CACHE_GHA}" == "true" ]]; then
+          cache_from+=("type=gha,scope=${cache_scope}")
+        fi
+        if [[ "${COSIGN_ENABLED}" != "true" ]] || [[ "${CACHE_VERIFIED}" == "true" ]]; then
+          cache_from+=("type=registry,ref=${IMAGE}:${CACHE_IMAGE_TAG}")
+        fi
+        {
+          echo "cache_from<<EOF"
+          printf '%s\n' "${cache_from[@]}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        cache_to=("type=inline")
+        if [[ "${CACHE_GHA}" == "true" ]]; then
+          cache_to+=("type=gha,mode=max,scope=${cache_scope}")
+        fi
+        {
+          echo "cache_to<<EOF"
+          printf '%s\n' "${cache_to[@]}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        if [ -z "${FILE_INPUT}" ]; then
+          echo file="${CONTEXT}/Dockerfile" >> "$GITHUB_OUTPUT"
+        else
+          echo file="${FILE_INPUT}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Build image
+      id: build
+      uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+      with:
+        context: ${{ env.CONTEXT }} # zizmor: ignore[template-injection]
+        file: ${{ steps.options.outputs.file }}
+        pull: true
+        push: ${{ inputs.push == 'true' }}
+        load: ${{ inputs.load == 'true' }}
+        build-args: ${{ steps.options.outputs.build_args }}
+        labels: ${{ steps.options.outputs.labels }}
+        tags: ${{ steps.options.outputs.tags }}
+        outputs: ${{ steps.options.outputs.output }}
+        cache-to: ${{ steps.options.outputs.cache_to }}
+        cache-from: ${{ steps.options.outputs.cache_from }}
+
+      env:
+        CONTEXT: ${{ inputs.context }}
+
+    - name: Sign per-arch image
+      if: inputs.push == 'true' && inputs.cosign == 'true'
+      shell: bash
+      env:
+        IMAGE_REF: ${{ inputs.image }}@${{ steps.build.outputs.digest }}
+      run: |
+        echo "::group::Signing image: ${IMAGE_REF}"
+
+        for i in {1..5}; do
+          if cosign sign --yes "${IMAGE_REF}"; then
+            echo "Signed: ${IMAGE_REF}"
+            exit 0
+          fi
+          echo "Signing attempt ${i} failed, retrying..."
+          sleep $((2 ** i))
+        done
+
+        echo "::endgroup::"
+
+        echo "::error::Failed to sign image ${IMAGE_REF}"
+        exit 1
