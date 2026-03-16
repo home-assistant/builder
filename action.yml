@@ -16,6 +16,11 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Deprecation warning
+      shell: bash
+      run: |
+        echo "::warning::The home-assistant/builder action is deprecated and no longer maintained. Please check https://github.com/home-assistant/builder and migrate the workflow to the new reusable actions."
+
     - name: Install Cosign
       uses: sigstore/cosign-installer@v4.0.0
       with:
