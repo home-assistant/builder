@@ -105,4 +105,4 @@ jobs:
 
 ## Legacy `home-assistant/builder` action
 
-The `home-assistant/builder` action is deprecated and no longer maintained, the last official release was [2026.02.1](https://github.com/home-assistant/builder/blob/2026.02.1/README.md). The legacy action currently shows warning when it's used and will be completely removed from the repository in a future release.
+The `home-assistant/builder` action is deprecated and no longer maintained, the last official release was [2026.02.1](https://github.com/home-assistant/builder/blob/2026.02.1/README.md). If you came here because you see the warning in your action, migrate to the new actions above. We will remove the `home-assistant/builder` action soon, which will break your GitHub action if it is still using `home-assistant/builder@master` at that time.
