@@ -1,4 +1,7 @@
 template: |
+  > [!WARNING]
+  > Since 2026.03.0, the `home-assistant/builder` action is deprecated in favor of more efficient and flexible composable actions.  See the [builder repository](https://github.com/home-assistant/builder) for details.
+
   ## What's Changed
 
   $CHANGES
