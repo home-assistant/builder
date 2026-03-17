@@ -10,10 +10,7 @@ updates:
     - dependency-name: "home-assistant/builder/*"
 - package-ecosystem: "github-actions"
   directories:
-    - "/actions/build-image"
-    - "/actions/cosign-verify"
-    - "/actions/prepare-multi-arch-matrix"
-    - "/actions/publish-multi-arch-manifest"
+    - "/actions/*"
   schedule:
     interval: daily
     time: "06:00"
