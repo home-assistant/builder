@@ -1,247 +1,108 @@
-# Home Assistant builder
+# Home Assistant Builder
 
-_Multi-purpose cross-compile docker builder._
+_Tooling used for building of Home Assistant container images._
 
-## GitHub Action
+## Reusable GitHub Actions
 
-You can use this repository as a GitHub action to test and/or publish your builds.
+This repository provides a set of the following composable GitHub Actions for building, signing, and publishing multi-arch container images. They are designed to be used together in a workflow but some of them can be used standalone as well.
 
-Use the `with.args` key to pass in arguments to the builder, to see what arguments are supported you can look at the [arguments](#Arguments) section.
+### [`prepare-multi-arch-matrix`](actions/prepare-multi-arch-matrix/action.yml)
 
-### Cosign support
+Takes a JSON array of architectures (e.g., `["amd64", "aarch64"]`) and an image name, and outputs a GitHub Actions build matrix suited for use with `build-image`.
 
-You can use cosign to signing and verify the build chain. To sign the image, use `--cosign` and attach following options to the github action:
+### [`build-image`](actions/build-image/action.yml)
 
-```yaml
-jobs:
-  build:
-    name: Test build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-```
+Builds a single-arch container image using Docker Buildx with optional push and Cosign signing. Supports GHA and registry-based build caching, base image signature verification, and custom build args/labels. Outputs the image digest.
 
-For keep a trust-chain during the built, you need set `identity` and `base_identity` to your build.yml
+### [`publish-multi-arch-manifest`](actions/publish-multi-arch-manifest/action.yml)
 
-### Test action example
+Combines per-architecture images (e.g., `amd64-myimage:latest`, `aarch64-myimage:latest`) into a single multi-arch manifest (e.g., `myimage:latest`) using `docker buildx imagetools create`. Optionally signs the resulting manifest with Cosign.
 
-_Note: Replace `[version]` with the desired tag from the [releases](https://github.com/home-assistant/builder/releases) page._
+### [`cosign-verify`](actions/cosign-verify/action.yml)
 
-```yaml
-name: "Test"
+Verifies Cosign signatures on container images with up to 5 retries and exponential backoff. Supports an allow-failure mode that emits a warning instead of failing. Used internally by `build-image` for cache and base image verification, but can also be used standalone.
 
-on: [push, pull_request]
+## Example workflow
 
-jobs:
-  build:
-    name: Test build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v6
-      - name: Test build
-        uses: home-assistant/builder@[version]
-        with:
-          args: |
-            --test \
-            --all \
-            --target addon-folder \
-            --docker-hub user-name-or-space-name
-```
-
-### Publish action example
+The following example workflow builds multi-arch container images when a GitHub release is published. It prepares a build matrix, builds per-architecture images in parallel (e.g., `ghcr.io/owner/amd64-my-image`, `ghcr.io/owner/aarch64-my-image`), and then combines them into a single multi-arch manifest (`ghcr.io/owner/my-image`).
 
 _Note: Replace `[version]` with the desired tag from the [releases](https://github.com/home-assistant/builder/releases) page._
 
 ```yaml
-name: "Publish"
+name: Build
 
 on:
   release:
     types: [published]
 
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: my-image
+
+permissions:
+  contents: read
+
 jobs:
-  publish:
-    name: Publish
+  init:
+    name: Initialize build
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v6
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v6
+
+      - name: Get build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@[version]
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Publish
-        uses: home-assistant/builder@[version]
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+
+  build:
+    name: Build ${{ matrix.arch }} image
+    needs: init
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read # To check out the code
+      id-token: write # Write needed for Cosign signing (issue OIDC token for signing)
+      packages: write # To push built images to GitHub Container Registry
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build image
+        uses: home-assistant/builder/actions/build-image@[version]
         with:
-          args: |
-            --all \
-            --target addon-folder \
-            --docker-hub user-name-or-space-name
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ github.event.release.tag_name }}
+            latest
+          push: "true"
+          version: ${{ github.event.release.tag_name }}
+
+  manifest:
+    name: Publish multi-arch manifest
+    needs: [init, build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Write needed for Cosign signing (issue OIDC token for signing)
+      packages: write # To push the manifest to GitHub Container Registry
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@[version]
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: |
+            ${{ github.event.release.tag_name }}
+            latest
 ```
 
-## Arguments
+## Legacy `home-assistant/builder` action
 
-```
-Options:
-  -h, --help
-        Display this help and exit.
-
-  Repository / Data
-    -r, --repository <REPOSITORY>
-        Set git repository to load data from.
-    -b, --branch <BRANCH>
-        Set git branch for repository.
-    -t, --target <PATH_TO_BUILD>
-        Set local folder or path inside repository for build.
-
-  Version/Image handling
-    -v, --version <VERSION>
-        Overwrite version/tag of build.
-    -i, --image <IMAGE_NAME>
-        Overwrite image name of build / support {arch}.
-    --release <VERSION>
-        Additional version information like for base images.
-    --release-tag
-        Use this as main tag.
-    --additional-tag
-        Add additional tags that will be published
-    --version-from <VERSION>
-        Use this to set build_from tag if not specified.
-
-  Architecture (select at least one)
-    --amd64
-        Build for intel/amd 64bit.
-    --aarch64
-        Build for arm 64bit.
-
-  Build handling
-    --test
-       Disable push to dockerhub.
-    --no-latest
-       Do not tag images as latest.
-    --no-cache
-       Disable cache for the build (from latest).
-    --self-cache
-       Use same tag as cache tag instead latest.
-    --cache-tag <TAG>
-       Use a custom tag for the build cache.
-    -d, --docker-hub <DOCKER_REPOSITORY>
-       Set or overwrite the docker repository.
-    --docker-hub-check
-       Check if the version already exists before starting the build.
-    --docker-user <USER>
-       Username to login into docker with
-    --docker-password <PASSWORD>
-       Password to login into docker with
-
-    Use the host docker socket if mapped into container:
-       /var/run/docker.sock
-
-  Internals:
-    --addon
-        Default on. Run all things for an addon build.
-    --generic <VERSION>
-        Build based on the build.json
-    --base <VERSION>
-        Build our base images.
-    --machine <VERSION=ALL,X,Y>
-        Build the machine based image for a release/landingpage.
-
-  Security:
-    --cosign
-        Enable signing images with cosign.
-    --no-cosign-verify
-        Disable image signature validation.
-```
-
-## Local installation
-
-amd64:
-
-```bash
-docker pull ghcr.io/home-assistant/amd64-builder:latest
-```
-
-aarch64:
-
-```bash
-docker pull ghcr.io/home-assistant/aarch64-builder:latest
-```
-
-## Run
-
-**For remote git repository:**
-
-```bash
-docker run \
-	--rm \
-	--privileged \
-	-v ~/.docker:/root/.docker \
-    ghcr.io/home-assistant/amd64-builder:latest \
-		--all \
-		-t addon-folder \
-		-r https://github.com/xy/addons \
-		-b branchname
-```
-
-**For local git repository:**
-
-```bash
-docker run \
-	--rm \
-	--privileged \
-	-v ~/.docker:/root/.docker \
-	-v /my_addon:/data \
-    ghcr.io/home-assistant/amd64-builder:latest \
-		--all \
-		-t /data
-```
-
-## Docker Daemon
-
-By default, the image will run docker-in-docker. You can use the host docker daemon by bind mounting the host docker socket to `/var/run/docker.sock` inside the container. For example, to do this with the _Local repository_ example above (assuming the host docker socket is at `/var/run/docker.sock`:
-
-```bash
-docker run \
-	--rm \
-	--privileged \
-	-v ~/.docker:/root/.docker \
-	-v /var/run/docker.sock:/var/run/docker.sock:ro \
-	-v /my_addon:/data \
-    ghcr.io/home-assistant/amd64-builder:latest \
-		--all \
-		-t /data
-```
-
-### Using shell alias
-
-On Linux, it can be helpful to use a shell alias to run the builder from the
-current directory. E.g. by adding the following function to your `~/.bashrc`:
-
-```
-function builder() {
-	docker run \
-	  --rm \
-	  -it \
-	  --privileged \
-	  -v ${PWD}:/data \
-	  -v /var/run/docker.sock:/var/run/docker.sock:ro \
-      ghcr.io/home-assistant/amd64-builder:latest --target /data $@
-}
-```
-
-This allows to build add-ons e.g. for a single architecture as follow:
-```
-$ cd /path/to/your/add-on
-$ builder --amd64 --docker-hub agners
-```
-
-## Help
-
-```bash
-docker run --rm --privileged ghcr.io/home-assistant/amd64-builder:latest --help
-```
+The `home-assistant/builder` action is deprecated and no longer maintained, the last official release was [2026.02.1](https://github.com/home-assistant/builder/blob/2026.02.1/README.md). If you came here because you see the warning in your action, migrate to the new actions above. We will remove the `home-assistant/builder` action soon, which will break your GitHub action if it is still using `home-assistant/builder@master` at that time.

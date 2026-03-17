@@ -932,6 +932,9 @@ fi
 
 #### Main ####
 
+bashio::log.warning "This builder script is deprecated and no longer supported."
+bashio::log.warning "Please migrate your builds to use standard Dockerfiles with the new reusable GitHub Actions."
+
 mkdir -p /data
 
 # Setup docker env
