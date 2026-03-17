@@ -6,3 +6,15 @@ updates:
     interval: daily
     time: "06:00"
   open-pull-requests-limit: 10
+  ignore:
+    - dependency-name: "home-assistant/builder/*"
+- package-ecosystem: "github-actions"
+  directories:
+    - "/actions/build-image"
+    - "/actions/cosign-verify"
+    - "/actions/prepare-multi-arch-matrix"
+    - "/actions/publish-multi-arch-manifest"
+  schedule:
+    interval: daily
+    time: "06:00"
+  open-pull-requests-limit: 10
