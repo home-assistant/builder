@@ -7,7 +7,7 @@ updates:
     time: "06:00"
   open-pull-requests-limit: 10
   ignore:
-    - dependency-name: "home-assistant/builder/*"
+    - dependency-name: "home-assistant/builder*"
 - package-ecosystem: "github-actions"
   directories:
     - "/actions/*"
