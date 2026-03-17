@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Build the builder
-        uses: home-assistant/builder@6cb4fd3d1338b6e22d0958a4bcb53e0965ea63b4 # 2026.02.1
+        uses: home-assistant/builder@dd86b0a3ee041ecc3f6512c0bfbc73a0cc724ce6 # 2026.03.0
         with:
           args: |
             --test \
