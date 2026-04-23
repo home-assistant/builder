@@ -106,3 +106,7 @@ jobs:
 ## Legacy `home-assistant/builder` action
 
 The `home-assistant/builder` action is deprecated and no longer maintained, the last official release was [2026.02.1](https://github.com/home-assistant/builder/blob/2026.02.1/README.md). If you came here because you see the warning in your action, migrate to the new actions above. We will remove the `home-assistant/builder` action soon, which will break your GitHub action if it is still using `home-assistant/builder@master` at that time.
+
+### Migration Guide
+
+Please refer to the [Migrating app builds to Docker BuildKit blog post](https://developers.home-assistant.io/blog/2026/04/02/builder-migration/) for the migration process.
