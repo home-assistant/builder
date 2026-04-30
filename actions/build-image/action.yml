@@ -108,8 +108,6 @@ runs:
     - name: Install Cosign
       if: inputs.cosign == 'true' || inputs.cosign-base-verify != ''
       uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
-      with:
-        cosign-release: "v2.5.3"
 
     - name: Verify cache image ${{ inputs.image }}:${{ inputs.cache-image-tag }}
       if: inputs.cosign == 'true'
