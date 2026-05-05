@@ -111,4 +111,4 @@ The `home-assistant/builder` action is deprecated and no longer maintained, the 
 
 ### Migration Guide
 
-Please refer to the [Migrating app builds to Docker BuildKit blog post](https://developers.home-assistant.io/blog/2026/04/02/builder-migration/) for the migration process.
+Please refer to the [Migrating app builds to Docker BuildKit](https://developers.home-assistant.io/blog/2026/04/02/builder-migration/) for the migration process.
