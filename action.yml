@@ -29,7 +29,7 @@ runs:
       run: |
         input=$(echo "${{ github.action_path }}" | rev | cut -d"/" -f1 | rev)
         if [[ "${input}" == "master" ]] || [[ -z "${input}" ]]; then
-          input="latest"
+          input="2026.02.1" # latest official release with builder image
         fi
         echo "version=${input}" >> "$GITHUB_OUTPUT"
 
