@@ -81,3 +81,81 @@ jobs:
     with:
       app: .github/tests/app
       publish: ${{ needs.check_publish.outputs.publish == 'true' }}
+
+  skip_existing:
+    name: Test skip-existing
+    needs: [check_publish, app]
+    if: needs.check_publish.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    env:
+      # Every master run publishes this tag and nothing removes it
+      EXISTING_TAG: "1.0.0"
+      ARCH_IMAGE_REF: ${{ needs.app.outputs.registry_prefix }}/amd64-${{ needs.app.outputs.image_name }}:${{ needs.app.outputs.version }}
+      MANIFEST_REF: ${{ needs.app.outputs.registry_prefix }}/${{ needs.app.outputs.image_name }}:${{ needs.app.outputs.version }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Login to container registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read digests published by the app build
+        id: before
+        run: |
+          {
+            echo "arch_image=$(docker buildx imagetools inspect "$ARCH_IMAGE_REF" --format '{{.Manifest.Digest}}')"
+            echo "manifest=$(docker buildx imagetools inspect "$MANIFEST_REF" --format '{{.Manifest.Digest}}')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build image with an existing skip-existing tag
+        uses: ./actions/build-image
+        with:
+          arch: amd64
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          context: ./.github/tests/app
+          cache-gha-scope: .github/tests/app
+          image: ${{ needs.app.outputs.registry_prefix }}/amd64-${{ needs.app.outputs.image_name }}
+          image-tags: ${{ needs.app.outputs.version }}
+          push: "true"
+          skip-existing: ${{ env.EXISTING_TAG }}
+          version: ${{ needs.app.outputs.version }}
+
+      - name: Verify the image was not pushed
+        env:
+          EXPECTED_DIGEST: ${{ steps.before.outputs.arch_image }}
+        run: |
+          digest="$(docker buildx imagetools inspect "$ARCH_IMAGE_REF" --format '{{.Manifest.Digest}}')"
+          if [[ "$digest" != "$EXPECTED_DIGEST" ]]; then
+            echo "::error::Expected ${ARCH_IMAGE_REF} to keep digest ${EXPECTED_DIGEST}, got ${digest}"
+            exit 1
+          fi
+
+      - name: Publish manifest with an existing skip-existing tag
+        uses: ./actions/publish-multi-arch-manifest
+        with:
+          architectures: ${{ needs.app.outputs.architectures }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ needs.app.outputs.image_name }}
+          image-tags: ${{ needs.app.outputs.version }}
+          registry-prefix: ${{ needs.app.outputs.registry_prefix }}
+          skip-existing: ${{ env.EXISTING_TAG }}
+
+      - name: Verify the manifest was not published
+        env:
+          EXPECTED_DIGEST: ${{ steps.before.outputs.manifest }}
+        run: |
+          digest="$(docker buildx imagetools inspect "$MANIFEST_REF" --format '{{.Manifest.Digest}}')"
+          if [[ "$digest" != "$EXPECTED_DIGEST" ]]; then
+            echo "::error::Expected ${MANIFEST_REF} to keep digest ${EXPECTED_DIGEST}, got ${digest}"
+            exit 1
+          fi

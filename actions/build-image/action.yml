@@ -82,6 +82,10 @@ inputs:
     description: Whether to push images to registry
     required: false
     default: "false"
+  skip-existing:
+    description: Build without pushing any tags or signing if this image tag already exists (empty disables the check)
+    required: false
+    default: ""
   version:
     description: Image version label
     required: true
@@ -104,6 +108,35 @@ runs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+    - name: Decide whether to publish
+      id: publish
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        SKIP_EXISTING: ${{ inputs.skip-existing }}
+        PUSH: ${{ inputs.push }}
+      run: |
+        if [[ "${PUSH}" != "true" ]]; then
+          echo "push=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [[ -z "${SKIP_EXISTING}" ]]; then
+          echo "push=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        image_ref="${IMAGE}:${SKIP_EXISTING}"
+
+        if result=$(docker buildx imagetools inspect "${image_ref}" 2>&1); then
+          echo "push=false" >> "$GITHUB_OUTPUT"
+        elif [[ "${result}" == *"${image_ref}: not found"* || "${result}" == *"manifest unknown"* || "${result}" == *"MANIFEST_UNKNOWN"* ]]; then
+          echo "push=true" >> "$GITHUB_OUTPUT"
+        else
+          printf '%s\n' "${result}" >&2
+          echo "::error::Could not check whether ${image_ref} already exists"
+          exit 1
+        fi
 
     - name: Install Cosign
       if: inputs.cosign == 'true' || inputs.cosign-base-verify != ''
@@ -136,7 +169,7 @@ runs:
       env:
         IMAGE: ${{ inputs.image }}
         IMAGE_TAGS: ${{ inputs.image-tags }}
-        PUSH: ${{ inputs.push }}
+        PUSH: ${{ steps.publish.outputs.push }}
         LOAD: ${{ inputs.load }}
         VERSION: ${{ inputs.version }}
         ARCH: ${{ inputs.arch }}
@@ -241,7 +274,7 @@ runs:
         context: ${{ env.CONTEXT }} # zizmor: ignore[template-injection]
         file: ${{ steps.options.outputs.file }}
         pull: true
-        push: ${{ inputs.push == 'true' }}
+        push: ${{ steps.publish.outputs.push == 'true' }}
         load: ${{ inputs.load == 'true' }}
         build-args: ${{ steps.options.outputs.build_args }}
         labels: ${{ steps.options.outputs.labels }}
@@ -253,8 +286,16 @@ runs:
       env:
         CONTEXT: ${{ inputs.context }}
 
+    - name: Warn about skipped publishing
+      if: inputs.push == 'true' && steps.publish.outputs.push == 'false'
+      shell: bash
+      env:
+        IMAGE_REF: ${{ inputs.image }}:${{ inputs.skip-existing }}
+      run: |
+        echo "::warning::Image ${IMAGE_REF} was rebuilt but not re-published because the specified tag already exists. No image tags were pushed. Bump the version to publish these changes."
+
     - name: Sign per-arch image
-      if: inputs.push == 'true' && inputs.cosign == 'true'
+      if: steps.publish.outputs.push == 'true' && inputs.cosign == 'true'
       shell: bash
       env:
         IMAGE_REF: ${{ inputs.image }}@${{ steps.build.outputs.digest }}

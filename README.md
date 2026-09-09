@@ -18,6 +18,8 @@ Builds a single-arch container image using Docker Buildx with optional push and 
 
 Combines per-architecture images (e.g., `amd64-myimage:latest`, `aarch64-myimage:latest`) into a single multi-arch manifest (e.g., `myimage:latest`) using `docker buildx imagetools create`. Optionally signs the resulting manifest with Cosign.
 
+Both `build-image` and `publish-multi-arch-manifest` accept a `skip-existing` option that takes a tag. If that tag exists, all pushes and signing are skipped with a warning; `build-image` still builds the image. An empty value (the default) disables the check.
+
 ### [`cosign-verify`](actions/cosign-verify/action.yml)
 
 Verifies Cosign signatures on container images with up to 5 retries and exponential backoff. Supports an allow-failure mode that emits a warning instead of failing. Used internally by `build-image` for cache and base image verification, but can also be used standalone.
@@ -82,6 +84,7 @@ jobs:
             ${{ github.event.release.tag_name }}
             latest
           push: "true"
+          skip-existing: ${{ github.event.release.tag_name }}
           version: ${{ github.event.release.tag_name }}
 
   manifest:
@@ -101,6 +104,7 @@ jobs:
           image-tags: |
             ${{ github.event.release.tag_name }}
             latest
+          skip-existing: ${{ github.event.release.tag_name }}
 ```
 
 ## Legacy `home-assistant/builder` action

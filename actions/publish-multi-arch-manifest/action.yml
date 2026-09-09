@@ -30,6 +30,10 @@ inputs:
     description: Registry and namespace prefix (e.g., "ghcr.io/owner")
     required: false
     default: ghcr.io/${{ github.repository_owner }}
+  skip-existing:
+    description: Skip publishing all tags and signing if this manifest tag already exists (empty disables the check)
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -47,11 +51,44 @@ runs:
         # TODO: remove pinning once >=v0.32.1 is available in https://github.com/actions/runner
         version: v0.32.1
 
+    - name: Decide whether to publish
+      id: publish
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.registry-prefix }}/${{ inputs.image-name }}
+        SKIP_EXISTING: ${{ inputs.skip-existing }}
+      run: |
+        if [[ -z "${SKIP_EXISTING}" ]]; then
+          echo "push=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        image_ref="${IMAGE}:${SKIP_EXISTING}"
+
+        if result=$(docker buildx imagetools inspect "${image_ref}" 2>&1); then
+          echo "push=false" >> "$GITHUB_OUTPUT"
+        elif [[ "${result}" == *"${image_ref}: not found"* || "${result}" == *"manifest unknown"* || "${result}" == *"MANIFEST_UNKNOWN"* ]]; then
+          echo "push=true" >> "$GITHUB_OUTPUT"
+        else
+          printf '%s\n' "${result}" >&2
+          echo "::error::Could not check whether ${image_ref} already exists"
+          exit 1
+        fi
+
+    - name: Warn about skipped publishing
+      if: steps.publish.outputs.push == 'false'
+      shell: bash
+      env:
+        IMAGE_REF: ${{ inputs.registry-prefix }}/${{ inputs.image-name }}:${{ inputs.skip-existing }}
+      run: |
+        echo "::warning::Manifest ${IMAGE_REF} was not re-published because the specified tag already exists. Bump the version to publish these changes."
+
     - name: Install Cosign
-      if: inputs.cosign == 'true'
+      if: steps.publish.outputs.push == 'true' && inputs.cosign == 'true'
       uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
     - name: Create multi-arch manifest and sign it
+      if: steps.publish.outputs.push == 'true'
       shell: bash
       env:
         ARCHITECTURES: ${{ inputs.architectures }}

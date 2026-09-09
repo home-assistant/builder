@@ -9,6 +9,15 @@ on:
       publish:
         required: true
         type: boolean
+    outputs:
+      architectures:
+        value: ${{ jobs.prepare.outputs.architectures }}
+      image_name:
+        value: ${{ jobs.prepare.outputs.image_name }}
+      registry_prefix:
+        value: ${{ jobs.prepare.outputs.registry_prefix }}
+      version:
+        value: ${{ jobs.prepare.outputs.version }}
 
 permissions:
   contents: read
