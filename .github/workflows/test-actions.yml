@@ -1,0 +1,83 @@
+name: Test actions
+
+on:
+  pull_request:
+    paths:
+      - actions/**
+      - .github/tests/**
+      - .github/workflows/test-actions.yml
+      - .github/workflows/test-build-app.yml
+  push:
+    branches:
+      - master
+    paths:
+      - actions/**
+      - .github/tests/**
+      - .github/workflows/test-actions.yml
+      - .github/workflows/test-build-app.yml
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish test images to GHCR
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Serialize runs that publish to the same tags; PR tags are isolated per PR.
+concurrency:
+  group: test-builder-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
+  cancel-in-progress: false
+
+jobs:
+  check_publish:
+    name: Decide whether to publish
+    if: github.repository == 'home-assistant/builder'
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - name: Check publishing permissions
+        id: check
+        env:
+          ACTOR: ${{ github.actor }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          MANUAL_PUBLISH: ${{ inputs.publish }}
+        run: |
+          publish=false
+          # Dependabot runs have read-only tokens, even for branches in this repo.
+          if [[ "$ACTOR" != 'dependabot[bot]' ]]; then
+            case "$EVENT_NAME" in
+              push)
+                # The trigger above limits pushes to master.
+                publish=true
+                ;;
+              pull_request)
+                # Same-repo PRs can write packages; fork PR tokens are read-only.
+                if [[ "$HEAD_REPOSITORY" == "$GITHUB_REPOSITORY" ]]; then
+                  publish=true
+                fi
+                ;;
+              workflow_dispatch)
+                # Manual runs publish only when explicitly requested.
+                if [[ "$MANUAL_PUBLISH" == 'true' ]]; then
+                  publish=true
+                fi
+                ;;
+            esac
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
+  app:
+    name: Build test app
+    needs: check_publish
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    uses: ./.github/workflows/test-build-app.yml
+    with:
+      app: .github/tests/app
+      publish: ${{ needs.check_publish.outputs.publish == 'true' }}

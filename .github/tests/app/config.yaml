@@ -1,0 +1,14 @@
+name: Builder test
+version: "1.0.0"
+slug: builder_test
+description: Test app for the Home Assistant Builder actions
+url: https://github.com/home-assistant/builder
+arch:
+  - amd64
+  - aarch64
+image: ghcr.io/home-assistant/builder-test
+startup: once
+boot: manual
+init: false
+options: {}
+schema: {}
