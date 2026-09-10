@@ -5,3 +5,9 @@ template: |
   ## What's Changed
 
   $CHANGES
+
+categories:
+  - title: Dependencies
+    labels:
+      - dependencies
+    collapse-after: 0
