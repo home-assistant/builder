@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+
+  "enabledManagers": ["github-actions"],
+
+  "semanticCommits": "disabled",
+  "labels": ["dependencies", "github_actions"],
+
+  "packageRules": [
+    {
+      "description": "Leave runner labels and action version inputs alone, Dependabot never updated those",
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["github-runner", "uses-with"],
+      "enabled": false
+    },
+    {
+      "description": "Our own actions that follow a branch float on purpose, unless they are already pinned to a commit (like home-assistant/actions/helpers/info in the test workflow), in which case the pin is kept up to date.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["home-assistant/**"],
+      "matchCurrentValue": "/^(dev|main|master)$/",
+      "pinDigests": false
+    }
+  ]
+}
