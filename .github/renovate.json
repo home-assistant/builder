@@ -1,11 +1,32 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "extends": ["config:recommended"],
 
-  "enabledManagers": ["github-actions"],
+  "enabledManagers": ["github-actions", "custom.regex"],
 
   "semanticCommits": "disabled",
   "labels": ["dependencies", "github_actions"],
+
+  "constraints": {
+    "ghActionsLock": "v0.5.0"
+  },
+
+  "customManagers": [
+    {
+      "description": "Keep gh-actions-lock in CI and Renovate's lockfile generator on the same version",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/actions-lock\\.yml$/",
+        "/^\\.github/renovate\\.json$/"
+      ],
+      "matchStrings": [
+        "GH_ACTIONS_LOCK_VERSION: (?<currentValue>v\\d+\\.\\d+\\.\\d+)",
+        "\"ghActionsLock\": \"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "github/gh-actions-lock",
+      "datasourceTemplate": "github-releases"
+    }
+  ],
 
   "packageRules": [
     {
@@ -13,13 +34,6 @@
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["github-runner", "uses-with"],
       "enabled": false
-    },
-    {
-      "description": "Our own actions that follow a branch float on purpose, unless they are already pinned to a commit (like home-assistant/actions/helpers/info in the test workflow), in which case the pin is kept up to date.",
-      "matchManagers": ["github-actions"],
-      "matchPackageNames": ["home-assistant/**"],
-      "matchCurrentValue": "/^(dev|main|master)$/",
-      "pinDigests": false
     }
   ]
 }
