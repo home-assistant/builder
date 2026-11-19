@@ -39,7 +39,7 @@ jobs:
       moving_tag: ${{ steps.normalize.outputs.moving_tag }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
@@ -78,7 +78,7 @@ jobs:
 
       - name: Prepare build matrix
         id: matrix
-        uses: ./actions/prepare-multi-arch-matrix
+        uses: $/actions/prepare-multi-arch-matrix
         with:
           architectures: ${{ steps.info.outputs.architectures }}
           image-name: ${{ steps.normalize.outputs.image_name }}
@@ -97,12 +97,12 @@ jobs:
       matrix: ${{ fromJSON(needs.prepare.outputs.build_matrix) }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
       - name: Build image
-        uses: ./actions/build-image
+        uses: $/actions/build-image
         with:
           arch: ${{ matrix.arch }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
@@ -132,12 +132,12 @@ jobs:
       packages: write
     steps:
       - name: Check out the repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
       - name: Publish multi-arch manifest
-        uses: ./actions/publish-multi-arch-manifest
+        uses: $/actions/publish-multi-arch-manifest
         with:
           architectures: ${{ needs.prepare.outputs.architectures }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
@@ -148,7 +148,7 @@ jobs:
           registry-prefix: ${{ needs.prepare.outputs.registry_prefix }}
 
       - name: Verify manifest signature
-        uses: ./actions/cosign-verify
+        uses: $/actions/cosign-verify
         with:
           image: ${{ needs.prepare.outputs.registry_prefix }}/${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}
           cosign-identity: ^https://github.com/home-assistant/builder/.*
