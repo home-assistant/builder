@@ -21,7 +21,7 @@ workflows:
         - 'docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc'
         - 'docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550'
         - 'docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069'
-        - 'home-assistant/actions@86d4564712fa02543c808e3a693dd04f9d3f8361'
+        - 'home-assistant/actions@9e9565e68f5a70d874202871f4c4064d23814235'
         - 'home-assistant/builder@7412f0023ea9b6e58e8bb5059f1660f51376f49a'
         - 'sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532'
 dependencies:
@@ -50,9 +50,9 @@ dependencies:
         commit: 'sha1-f87e5991a6d7451dcb8d9637bfbc97413f497069'
         owner_id: 5429470
         repo_id: 288485773
-    'home-assistant/actions@86d4564712fa02543c808e3a693dd04f9d3f8361':
+    'home-assistant/actions@9e9565e68f5a70d874202871f4c4064d23814235':
         ref: 'master'
-        commit: 'sha1-86d4564712fa02543c808e3a693dd04f9d3f8361'
+        commit: 'sha1-9e9565e68f5a70d874202871f4c4064d23814235'
         owner_id: 13844975
         repo_id: 173703505
     'home-assistant/builder@7412f0023ea9b6e58e8bb5059f1660f51376f49a':
